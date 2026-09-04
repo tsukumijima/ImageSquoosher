@@ -1,0 +1,333 @@
+# Flutter Desktop の品質検査、両 OS の配布検証、タグリリースを行うワークフロー
+
+name: Build and Release
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+env:
+  FLUTTER_VERSION: 3.35.7
+  MACOS_APP_PATH: build/macos/Build/Products/Release/ImageSquoosher.app
+  WINDOWS_RELEASE_PATH: build/windows/x64/runner/Release
+
+jobs:
+  quality:
+    name: Format, analyze, and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate release tag and package version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must use vX.Y.Z: $GITHUB_REF_NAME." >&2
+            exit 1
+          fi
+          package_version="$(sed -n 's/^version: \([^+]*\).*/\1/p' pubspec.yaml)"
+          if [[ "v${package_version}" != "$GITHUB_REF_NAME" ]]; then
+            echo "Release tag $GITHUB_REF_NAME does not match pubspec version $package_version." >&2
+            exit 1
+          fi
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Check Dart format
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze Dart code
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+  build-windows:
+    name: Build and verify Windows x64
+    needs: quality
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Windows runner architecture
+        shell: pwsh
+        run: |
+          if (-not [Environment]::Is64BitProcess) {
+            throw 'The Windows build must run in an x64 process.'
+          }
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build MozJPEG cjpeg
+        shell: pwsh
+        run: ./tools/build_mozjpeg.ps1
+
+      - name: Run Windows desktop integration test
+        shell: pwsh
+        run: |
+          $env:IMAGE_SQUOOSHER_CJPEG = Join-Path $PWD 'native/mozjpeg/windows/cjpeg.exe'
+          flutter test integration_test -d windows
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Bundle MozJPEG cjpeg
+        shell: pwsh
+        run: ./tools/bundle_mozjpeg.ps1
+
+      - name: Copy VC++ runtime DLLs
+        shell: pwsh
+        run: |
+          $runtimeNames = @(
+            'msvcp140.dll',
+            'vcruntime140.dll',
+            'vcruntime140_1.dll'
+          )
+          foreach ($runtimeName in $runtimeNames) {
+            $matches = @(vswhere -latest -find "VC\Redist\MSVC\*\x64\*\$runtimeName")
+            if ($matches.Count -eq 0) {
+              throw "VC++ runtime DLL was not found: $runtimeName."
+            }
+            Copy-Item -LiteralPath $matches[0] -Destination '${{ env.WINDOWS_RELEASE_PATH }}' -Force
+          }
+
+      - name: Test bundled MozJPEG conversion
+        shell: pwsh
+        run: |
+          $env:IMAGE_SQUOOSHER_CJPEG = Join-Path $PWD '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/cjpeg.exe'
+          flutter test test/services/image_conversion_pipeline_test.dart
+
+      - name: Verify Windows bundle contents
+        shell: pwsh
+        run: |
+          $requiredPaths = @(
+            '${{ env.WINDOWS_RELEASE_PATH }}/ImageSquoosher.exe',
+            '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/cjpeg.exe',
+            '${{ env.WINDOWS_RELEASE_PATH }}/msvcp140.dll',
+            '${{ env.WINDOWS_RELEASE_PATH }}/vcruntime140.dll',
+            '${{ env.WINDOWS_RELEASE_PATH }}/vcruntime140_1.dll'
+          )
+          foreach ($requiredPath in $requiredPaths) {
+            if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+              throw "Windows bundle file is missing: $requiredPath."
+            }
+          }
+          & '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/cjpeg.exe' -version
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Bundled cjpeg could not be executed.'
+          }
+
+      - name: Archive Windows application
+        shell: pwsh
+        run: |
+          $version = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}' } else { '${{ github.sha }}' }
+          $archiveName = "ImageSquoosher-$version-windows.zip"
+          $packageDirectory = Join-Path $PWD 'ImageSquoosher'
+          New-Item -ItemType Directory -Path $packageDirectory | Out-Null
+          Copy-Item -Path '${{ env.WINDOWS_RELEASE_PATH }}/*' -Destination $packageDirectory -Recurse
+          Compress-Archive -Path $packageDirectory -DestinationPath $archiveName
+          "WINDOWS_ARCHIVE_NAME=$archiveName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ImageSquoosher-windows
+          path: ${{ env.WINDOWS_ARCHIVE_NAME }}
+          retention-days: 7
+          if-no-files-found: error
+
+  build-macos:
+    name: Build and verify macOS arm64
+    needs: quality
+    runs-on: macos-15
+    env:
+      MACOS_CODE_SIGNING_ENABLED: ${{ secrets.MACOS_CODE_SIGNING_ENABLED }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify macOS runner architecture
+        shell: bash
+        run: test "$(uname -m)" = arm64
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build MozJPEG cjpeg
+        shell: bash
+        run: bash tools/build_mozjpeg.sh
+
+      - name: Run macOS desktop integration test
+        shell: bash
+        run: |
+          IMAGE_SQUOOSHER_CJPEG="$PWD/native/mozjpeg/macos/arm64/cjpeg" \
+            flutter test integration_test -d macos
+
+      - name: Build macOS release
+        run: flutter build macos --release
+
+      - name: Bundle MozJPEG cjpeg
+        shell: bash
+        run: bash tools/bundle_mozjpeg.sh "${{ env.MACOS_APP_PATH }}"
+
+      - name: Test bundled MozJPEG conversion
+        shell: bash
+        run: |
+          IMAGE_SQUOOSHER_CJPEG="$PWD/${{ env.MACOS_APP_PATH }}/Contents/Resources/mozjpeg/cjpeg" \
+            flutter test test/services/image_conversion_pipeline_test.dart
+
+      - name: Verify macOS bundle architecture and contents
+        shell: bash
+        run: |
+          app_executable="${{ env.MACOS_APP_PATH }}/Contents/MacOS/ImageSquoosher"
+          cjpeg_executable="${{ env.MACOS_APP_PATH }}/Contents/Resources/mozjpeg/cjpeg"
+          finder_extension="${{ env.MACOS_APP_PATH }}/Contents/PlugIns/ImageSquoosherFinderSync.appex"
+          test -x "$app_executable"
+          test -x "$cjpeg_executable"
+          test -d "$finder_extension"
+          file "$app_executable" | grep -q 'arm64'
+          file "$cjpeg_executable" | grep -q 'arm64'
+          "$cjpeg_executable" -version
+
+      - name: Require signing for a tag release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          if [[ "$MACOS_CODE_SIGNING_ENABLED" != true ]]; then
+            echo 'MACOS_CODE_SIGNING_ENABLED must be true for a tag release.' >&2
+            exit 1
+          fi
+
+      - name: Setup macOS signing keychain
+        if: env.MACOS_CODE_SIGNING_ENABLED == 'true'
+        shell: bash
+        run: bash tools/codesign_macos.bash setup-keychain
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+
+      - name: Sign macOS application for release
+        if: env.MACOS_CODE_SIGNING_ENABLED == 'true'
+        shell: bash
+        run: bash tools/codesign_macos.bash sign-app "${{ env.MACOS_APP_PATH }}"
+        env:
+          MACOS_CODESIGN_ENTITLEMENTS: macos/Runner/Distribution.entitlements
+          MACOS_CODESIGN_FINDER_SYNC_ENTITLEMENTS: macos/FinderSync/FinderSync.entitlements
+
+      - name: Notarize macOS application
+        if: env.MACOS_CODE_SIGNING_ENABLED == 'true'
+        shell: bash
+        run: bash tools/codesign_macos.bash notarize-app "${{ env.MACOS_APP_PATH }}"
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+
+      - name: Verify signed and notarized macOS application
+        if: env.MACOS_CODE_SIGNING_ENABLED == 'true'
+        shell: bash
+        run: bash tools/codesign_macos.bash verify-app "${{ env.MACOS_APP_PATH }}"
+
+      - name: Add ad hoc signature to CI application
+        if: env.MACOS_CODE_SIGNING_ENABLED != 'true'
+        shell: bash
+        run: bash tools/codesign_macos.bash sign-app "${{ env.MACOS_APP_PATH }}"
+        env:
+          MACOS_CODESIGN_IDENTITY: '-'
+
+      - name: Verify CI application signature
+        if: env.MACOS_CODE_SIGNING_ENABLED != 'true'
+        shell: bash
+        run: bash tools/codesign_macos.bash verify-signature "${{ env.MACOS_APP_PATH }}"
+
+      - name: Archive macOS application
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version="$GITHUB_REF_NAME"
+          else
+            version="$GITHUB_SHA"
+          fi
+          archive_name="ImageSquoosher-${version}-macos.zip"
+          ditto -c -k --sequesterRsrc --keepParent "${{ env.MACOS_APP_PATH }}" "$archive_name"
+          echo "MACOS_ARCHIVE_NAME=$archive_name" >> "$GITHUB_ENV"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ImageSquoosher-macos
+          path: ${{ env.MACOS_ARCHIVE_NAME }}
+          retention-days: 7
+          if-no-files-found: error
+
+  release:
+    name: Publish signed macOS and Windows release
+    needs: [quality, build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ImageSquoosher-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verify release asset names
+        shell: bash
+        run: |
+          expected_macos="release-assets/ImageSquoosher-${GITHUB_REF_NAME}-macos.zip"
+          expected_windows="release-assets/ImageSquoosher-${GITHUB_REF_NAME}-windows.zip"
+          test -f "$expected_macos"
+          test -f "$expected_windows"
+          test "$(find release-assets -maxdepth 1 -type f -name '*.zip' | wc -l | tr -d ' ')" = 2
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/ImageSquoosher-${{ github.ref_name }}-macos.zip
+            release-assets/ImageSquoosher-${{ github.ref_name }}-windows.zip
+          generate_release_notes: true

@@ -1,0 +1,63 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/macos/build/
+/coverage/
+
+# Generated MozJPEG binaries and distribution archives
+/native/mozjpeg/macos/*
+/native/mozjpeg/macos/*/*
+/native/mozjpeg/windows/*
+!/native/mozjpeg/macos/arm64/
+!/native/mozjpeg/macos/arm64/.gitkeep
+!/native/mozjpeg/macos/x86_64/
+!/native/mozjpeg/macos/x86_64/.gitkeep
+!/native/mozjpeg/windows/.gitkeep
+ImageSquoosher-*-macos.zip
+ImageSquoosher-*-windows.zip
+
+# Local signing material
+*.p12
+*.p8
+AuthKey_*.p8
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
