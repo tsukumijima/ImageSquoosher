@@ -180,7 +180,11 @@ class ImageConversionPipeline {
       crop: isDirectRgb ? null : _copyCropAsWhiteLinearRgb(oriented, plan.crop),
       directRgbBytes: isDirectRgb ? _copyAsWhiteSrgbBytes(oriented) : null,
       metadataSegments: metadataSegments,
-      iccProfileBytes: oriented.iccProfile?.clone().decompressed(),
+      iccProfileBytes: switch (sourceFormat) {
+        SourceImageFormat.jpeg => ImageMetadataTransfer.extractJpegIccProfile(inputBytes),
+        SourceImageFormat.webp => ImageMetadataTransfer.extractWebPIccProfile(inputBytes),
+        SourceImageFormat.png => oriented.iccProfile?.clone().decompressed(),
+      },
     );
   }
 

@@ -40,6 +40,14 @@ void main() {
     await firstInput.writeAsBytes(image.encodePng(image.Image(width: 64, height: 40)), flush: true);
     await secondInput.writeAsBytes(image.encodePng(image.Image(width: 80, height: 40)), flush: true);
     await brokenInput.writeAsBytes(<int>[0x89, 0x50, 0x4E, 0x47], flush: true);
+    final sourceModifiedAt = DateTime.utc(2020, 1, 2, 3, 4, 5);
+    await firstInput.setLastModified(sourceModifiedAt);
+    await secondInput.setLastModified(sourceModifiedAt);
+    final firstSourceCreationTime = Platform.isMacOS ? await _readMacOSCreationTime(firstInput) : null;
+    if (Platform.isMacOS) {
+      // 出力の新規作成日時と元画像の作成日時が偶然一致しないよう、秒境界を越えてから変換する
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
     inputPaths.addAll(<String>[firstInput.path, secondInput.path, brokenInput.path]);
 
     const finderMethodChannel = MethodChannel('net.tsukumijima.image-squoosher/finder_sync');
@@ -138,7 +146,20 @@ void main() {
     expect(image.decodeJpg(await firstOutput.readAsBytes())?.height, 24);
     expect(image.decodeJpg(await secondOutput.readAsBytes())?.width, 24);
     expect(image.decodeJpg(await secondOutput.readAsBytes())?.height, 24);
+    expect((await firstOutput.lastModified()).difference(sourceModifiedAt).abs(), lessThan(const Duration(seconds: 2)));
+    if (Platform.isMacOS) {
+      expect(await _readMacOSCreationTime(firstOutput), firstSourceCreationTime);
+    }
   });
+}
+
+/// macOS のファイル作成日時を Unix time の秒単位で取得します。
+Future<int> _readMacOSCreationTime(File file) async {
+  final result = await Process.run('stat', <String>['-f', '%B', file.path]);
+  if (result.exitCode != 0) {
+    throw FileSystemException('Could not read the file creation time.', file.path);
+  }
+  return int.parse((result.stdout as String).trim());
 }
 
 /// 非同期のキュー読み込みと変換完了を、実行環境の速度差を許容して待機します。

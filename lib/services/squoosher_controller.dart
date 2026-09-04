@@ -424,10 +424,10 @@ class SquoosherController extends ChangeNotifier {
         _images[index] = _images[index].copyWith(status: QueuedImageStatus.queued, clearErrorMessage: true);
       }
     }
-    await updateOutputPlans(settings);
-    notifyListeners();
-
     try {
+      await updateOutputPlans(settings);
+      notifyListeners();
+
       final result = await _engine.compress(
         CompressionRequest(images: images.where((image) => image.isInputValid).toList(), settings: settings),
         stopToken: _stopToken!,

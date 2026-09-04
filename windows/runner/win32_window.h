@@ -39,6 +39,9 @@ class Win32Window {
   // Show the current window. Returns true if the window was successfully shown.
   bool Show();
 
+  // ポインターがある画面の作業領域中央へウィンドウを移動する。移動できた場合は true を返す。
+  bool CenterOnPointerScreen();
+
   // Release OS resources associated with window.
   void Destroy();
 

@@ -3,6 +3,21 @@ import 'dart:typed_data';
 
 import 'image_pipeline_types.dart';
 
+const _iccProfileHeader = <int>[
+  0x49,
+  0x43,
+  0x43,
+  0x5F,
+  0x50,
+  0x52,
+  0x4F,
+  0x46,
+  0x49,
+  0x4C,
+  0x45,
+  0x00,
+];
+
 /// JPEG に表現できるメタデータ用の APP/COM セグメントです。
 class JpegMetadataSegment {
   /// JPEG の1セグメントへ保存できるデータ本体の最大バイト数です。
@@ -74,8 +89,24 @@ class ImageMetadataTransfer {
       return const <JpegMetadataSegment>[];
     }
     final segments = <JpegMetadataSegment>[];
-    var offset = 2;
+    for (final segment in _readJpegHeaderSegments(bytes)) {
+      final marker = segment.marker;
+      final data = segment.data;
+      // ICC は `cjpeg -icc` で新しく埋め込み、古い分割セグメントを収集対象から外す
+      if (_isExifApp1(data)) {
+        segments.add(
+          JpegMetadataSegment(marker: marker, data: _normalizeExifOrientation(data)),
+        );
+      } else if (_isXmpApp1(data) || _isPhotoshopApp13(data) || marker == 0xFE) {
+        segments.add(JpegMetadataSegment(marker: marker, data: data));
+      }
+    }
+    return segments;
+  }
 
+  /// JPEG ヘッダーから APP/COM セグメントを読み取ります。
+  static Iterable<({int marker, Uint8List data})> _readJpegHeaderSegments(Uint8List bytes) sync* {
+    var offset = 2;
     while (offset + 1 < bytes.lengthInBytes) {
       if (bytes[offset] != 0xFF) {
         break;
@@ -105,19 +136,79 @@ class ImageMetadataTransfer {
       if (length < 2 || dataEnd > bytes.lengthInBytes) {
         break;
       }
-      final data = Uint8List.fromList(bytes.sublist(dataStart, dataEnd));
-
-      // ICC は `cjpeg -icc` で新しく埋め込み、古い分割セグメントを収集対象から外す
-      if (_isExifApp1(data)) {
-        segments.add(
-          JpegMetadataSegment(marker: marker, data: _normalizeExifOrientation(data)),
-        );
-      } else if (_isXmpApp1(data) || _isPhotoshopApp13(data) || marker == 0xFE) {
-        segments.add(JpegMetadataSegment(marker: marker, data: data));
-      }
+      yield (marker: marker, data: Uint8List.fromList(bytes.sublist(dataStart, dataEnd)));
       offset = dataEnd;
     }
-    return segments;
+  }
+
+  /// JPEG APP2 の分割 ICC プロファイルを連番どおりに復元します。
+  static Uint8List? extractJpegIccProfile(Uint8List bytes) {
+    if (_isJpeg(bytes) == false) {
+      return null;
+    }
+    final fragments = <int, Uint8List>{};
+    int? fragmentCount;
+    Uint8List? legacySingleSegmentProfile;
+    var foundIccFragment = false;
+    for (final segment in _readJpegHeaderSegments(bytes)) {
+      if (segment.marker != 0xE2 || _hasPrefix(segment.data, _iccProfileHeader) == false) {
+        continue;
+      }
+      foundIccFragment = true;
+      if (segment.data.lengthInBytes < _iccProfileHeader.length + 2) {
+        return null;
+      }
+      final sequence = segment.data[_iccProfileHeader.length];
+      final total = segment.data[_iccProfileHeader.length + 1];
+      if (total == 0 || sequence == 0 || sequence > total) {
+        // package:image が生成した単一セグメントの旧形式には連番がないため、互換性のため許容する
+        if (legacySingleSegmentProfile != null || fragments.isNotEmpty) {
+          return null;
+        }
+        legacySingleSegmentProfile = Uint8List.fromList(segment.data.sublist(_iccProfileHeader.length));
+        continue;
+      }
+      if (legacySingleSegmentProfile != null) {
+        return null;
+      }
+      if (fragmentCount != null && fragmentCount != total) {
+        return null;
+      }
+      if (fragments.containsKey(sequence)) {
+        return null;
+      }
+      fragmentCount = total;
+      fragments[sequence] = Uint8List.fromList(segment.data.sublist(_iccProfileHeader.length + 2));
+    }
+    if (foundIccFragment == false || fragmentCount == null || fragments.length != fragmentCount) {
+      if (legacySingleSegmentProfile != null && fragments.isEmpty) {
+        return legacySingleSegmentProfile;
+      }
+      return null;
+    }
+
+    final profile = BytesBuilder(copy: false);
+    for (var sequence = 1; sequence <= fragmentCount; sequence += 1) {
+      final fragment = fragments[sequence];
+      if (fragment == null) {
+        return null;
+      }
+      profile.add(fragment);
+    }
+    return profile.toBytes();
+  }
+
+  /// WebP の ICCP チャンクから色プロファイルを取得します。
+  static Uint8List? extractWebPIccProfile(Uint8List bytes) {
+    if (_isWebP(bytes) == false) {
+      return null;
+    }
+    for (final chunk in _readWebPChunks(bytes)) {
+      if (chunk.type == 'ICCP') {
+        return chunk.data;
+      }
+    }
+    return null;
   }
 
   /// PNG の eXIf、XMP iTXt、Comment tEXt を JPEG セグメントへ変換します。
@@ -179,8 +270,28 @@ class ImageMetadataTransfer {
       return const <JpegMetadataSegment>[];
     }
     final segments = <JpegMetadataSegment>[];
-    var offset = 12;
+    for (final chunk in _readWebPChunks(bytes)) {
+      if (chunk.type == 'EXIF') {
+        final exif = BytesBuilder(copy: false)
+          ..add(const <int>[0x45, 0x78, 0x69, 0x66, 0x00, 0x00])
+          ..add(chunk.data);
+        final segment = _createSegmentIfFits(0xE1, _normalizeExifOrientation(exif.toBytes()));
+        if (segment != null) {
+          segments.add(segment);
+        }
+      } else if (chunk.type == 'XMP ') {
+        final segment = _xmpSegment(chunk.data);
+        if (segment != null) {
+          segments.add(segment);
+        }
+      }
+    }
+    return segments;
+  }
 
+  /// WebP の RIFF チャンクを宣言順に読み取ります。
+  static Iterable<({String type, Uint8List data})> _readWebPChunks(Uint8List bytes) sync* {
+    var offset = 12;
     while (offset + 8 <= bytes.lengthInBytes) {
       final type = ascii.decode(bytes.sublist(offset, offset + 4));
       final length = _readUint32LittleEndian(bytes, offset + 4);
@@ -190,25 +301,9 @@ class ImageMetadataTransfer {
       if (nextOffset > bytes.lengthInBytes || dataStart + length > bytes.lengthInBytes) {
         break;
       }
-      final data = Uint8List.fromList(bytes.sublist(dataStart, dataStart + length));
-
-      if (type == 'EXIF') {
-        final exif = BytesBuilder(copy: false)
-          ..add(const <int>[0x45, 0x78, 0x69, 0x66, 0x00, 0x00])
-          ..add(data);
-        final segment = _createSegmentIfFits(0xE1, _normalizeExifOrientation(exif.toBytes()));
-        if (segment != null) {
-          segments.add(segment);
-        }
-      } else if (type == 'XMP ') {
-        final segment = _xmpSegment(data);
-        if (segment != null) {
-          segments.add(segment);
-        }
-      }
+      yield (type: type, data: Uint8List.fromList(bytes.sublist(dataStart, dataStart + length)));
       offset = nextOffset;
     }
-    return segments;
   }
 
   /// PNG iTXt の非圧縮 XMP 本文を返します。

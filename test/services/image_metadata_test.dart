@@ -125,6 +125,15 @@ void main() {
       expect(segments.map((segment) => segment.data.lengthInBytes), everyElement(maximumDataLength));
     });
 
+    test('WebP の ICCP チャンクを色プロファイルとして取得する', () {
+      final profile = Uint8List.fromList(<int>[1, 2, 3, 4, 5]);
+
+      expect(
+        ImageMetadataTransfer.extractWebPIccProfile(_webPWithChunk('ICCP', profile)),
+        orderedEquals(profile),
+      );
+    });
+
     test('WebP の上限超過 EXIF と XMP は変換対象から外す', () {
       final maximumDataLength = JpegMetadataSegment.maximumDataLength;
       final sources = <Uint8List>[

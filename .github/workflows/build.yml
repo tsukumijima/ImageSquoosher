@@ -28,10 +28,14 @@ env:
 jobs:
   quality:
     name: Format, analyze, and test
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Verify quality runner architecture
+        shell: bash
+        run: test "$(uname -m)" = arm64
 
       - name: Validate release tag and package version
         if: startsWith(github.ref, 'refs/tags/')
@@ -57,6 +61,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Build MozJPEG cjpeg for quality checks
+        shell: bash
+        run: bash tools/build_mozjpeg.sh
+
       - name: Check Dart format
         run: dart format --output=none --set-exit-if-changed .
 
@@ -64,7 +72,16 @@ jobs:
         run: flutter analyze
 
       - name: Run Flutter tests
+        env:
+          IMAGE_SQUOOSHER_CJPEG: ${{ github.workspace }}/native/mozjpeg/macos/arm64/cjpeg
         run: flutter test
+
+      - name: Upload MozJPEG cjpeg for macOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ImageSquoosher-macos-cjpeg
+          path: native/mozjpeg/macos/arm64/cjpeg
+          if-no-files-found: error
 
   build-windows:
     name: Build and verify Windows x64
@@ -145,6 +162,28 @@ jobs:
               throw "Windows bundle file is missing: $requiredPath."
             }
           }
+          # PE ヘッダーの機械種別を読み取り、本体と同梱エンコーダーがともに x64 であることを確認する
+          foreach ($executablePath in @(
+            '${{ env.WINDOWS_RELEASE_PATH }}/ImageSquoosher.exe',
+            '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/cjpeg.exe'
+          )) {
+            $executableBytes = [System.IO.File]::ReadAllBytes($executablePath)
+            if ($executableBytes.Length -lt 0x40 -or $executableBytes[0] -ne 0x4D -or $executableBytes[1] -ne 0x5A) {
+              throw "$executablePath is not a valid Windows executable."
+            }
+            $peHeaderOffset = [BitConverter]::ToInt32($executableBytes, 0x3C)
+            if ($peHeaderOffset -lt 0 -or $peHeaderOffset + 6 -gt $executableBytes.Length) {
+              throw "$executablePath has an invalid PE header offset."
+            }
+            $peSignature = [Text.Encoding]::ASCII.GetString($executableBytes, $peHeaderOffset, 4)
+            if ($peSignature -ne "PE$([char]0)$([char]0)") {
+              throw "$executablePath does not contain a PE signature."
+            }
+            $peMachine = [BitConverter]::ToUInt16($executableBytes, $peHeaderOffset + 4)
+            if ($peMachine -ne [uint16]0x8664) {
+              throw "$executablePath is not x64 (machine: 0x$($peMachine.ToString('X4')))."
+            }
+          }
           & '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/cjpeg.exe' -version
           if ($LASTEXITCODE -ne 0) {
             throw 'Bundled cjpeg could not be executed.'
@@ -193,9 +232,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build MozJPEG cjpeg
+      - name: Download MozJPEG cjpeg
+        uses: actions/download-artifact@v4
+        with:
+          name: ImageSquoosher-macos-cjpeg
+          path: native/mozjpeg/macos/arm64
+
+      - name: Restore MozJPEG executable permission
         shell: bash
-        run: bash tools/build_mozjpeg.sh
+        run: chmod +x native/mozjpeg/macos/arm64/cjpeg
 
       - name: Run macOS desktop integration test
         shell: bash

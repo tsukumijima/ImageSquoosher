@@ -155,6 +155,33 @@ bool Win32Window::Show() {
   return ShowWindow(window_handle_, SW_SHOWNORMAL);
 }
 
+bool Win32Window::CenterOnPointerScreen() {
+  POINT pointer_point;
+  if (!GetCursorPos(&pointer_point)) {
+    return false;
+  }
+
+  // 画面ごとの作業領域と物理ピクセルを使い、タスクバーや DPI 倍率を含む実際の枠の中央へ配置する
+  HMONITOR pointer_monitor = MonitorFromPoint(pointer_point, MONITOR_DEFAULTTONEAREST);
+  MONITORINFO monitor_info = {sizeof(monitor_info)};
+  if (pointer_monitor == nullptr || !GetMonitorInfo(pointer_monitor, &monitor_info)) {
+    return false;
+  }
+
+  RECT window_rect;
+  if (!GetWindowRect(window_handle_, &window_rect)) {
+    return false;
+  }
+
+  const LONG window_width = window_rect.right - window_rect.left;
+  const LONG window_height = window_rect.bottom - window_rect.top;
+  const RECT work_area = monitor_info.rcWork;
+  const LONG centered_x = work_area.left + (work_area.right - work_area.left - window_width) / 2;
+  const LONG centered_y = work_area.top + (work_area.bottom - work_area.top - window_height) / 2;
+  return SetWindowPos(window_handle_, nullptr, centered_x, centered_y, 0, 0,
+                      SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE) != FALSE;
+}
+
 // static
 LRESULT CALLBACK Win32Window::WndProc(HWND const window,
                                       UINT const message,

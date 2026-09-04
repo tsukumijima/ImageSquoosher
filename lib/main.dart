@@ -38,7 +38,7 @@ Future<void> main() async {
     titleBarStyle: TitleBarStyle.normal,
   );
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
-    if (Platform.isMacOS) {
+    if (Platform.isMacOS || Platform.isWindows) {
       // ポインター画面の座標を取得できない場合も、標準の中央配置と通常起動を継続する
       try {
         await const MethodChannel(

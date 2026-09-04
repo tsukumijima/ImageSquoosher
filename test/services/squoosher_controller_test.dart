@@ -166,6 +166,26 @@ void main() {
       );
     });
 
+    test('出力計画で失敗しても処理状態を戻し、設定を直せば再実行できる', () async {
+      final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}invalid-settings.png');
+      await inputFile.writeAsBytes(image.encodePng(image.Image(width: 8, height: 6)), flush: true);
+      final controller = SquoosherController(engine: _ScriptedCompressionEngine());
+      addTearDown(controller.dispose);
+
+      expect(controller.addFiles(<String>[inputFile.path]), 1);
+      await _waitForImageDetails(controller);
+
+      await expectLater(
+        controller.compress(const ConversionSettings(suffix: '/')),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(controller.isCompressing, isFalse);
+      expect(controller.isStopping, isFalse);
+
+      expect(await controller.compress(const ConversionSettings()), isTrue);
+      expect(controller.images.single.status, QueuedImageStatus.completed);
+    });
+
     test('Finder の選択は一覧を置き換え、通常追加は重複を除外する', () async {
       final inputFiles = <File>[
         File('${temporaryDirectory.path}${Platform.pathSeparator}first.png'),

@@ -235,6 +235,67 @@ void main() {
     );
 
     test(
+      '64KB を超える JPEG の分割 ICC を連結し、変換後も全バイトを維持する',
+      () async {
+        final baseProfile = await sRgbIccProfile.readAsBytes();
+        final iccProfileBytes = Uint8List(70 * 1024);
+        iccProfileBytes.setAll(0, baseProfile);
+        for (var index = baseProfile.length; index < iccProfileBytes.length; index += 1) {
+          iccProfileBytes[index] = index & 0xFF;
+        }
+        iccProfileBytes[0] = (iccProfileBytes.length >> 24) & 0xFF;
+        iccProfileBytes[1] = (iccProfileBytes.length >> 16) & 0xFF;
+        iccProfileBytes[2] = (iccProfileBytes.length >> 8) & 0xFF;
+        iccProfileBytes[3] = iccProfileBytes.length & 0xFF;
+
+        final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}split-icc-source.jpg');
+        final outputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}split-icc-output.jpg');
+        await inputFile.writeAsBytes(
+          _jpegWithIccProfile(image.encodeJpg(image.Image(width: 48, height: 48), quality: 100), iccProfileBytes),
+          flush: true,
+        );
+
+        await ImageConversionPipeline().convert(
+          ImageConversionRequest(
+            inputFile: inputFile,
+            outputFile: outputFile,
+            cjpegExecutable: cjpeg,
+            settings: const ConversionSettings(quality: 100),
+          ),
+        );
+
+        expect(_iccProfileFromJpeg(await outputFile.readAsBytes()), orderedEquals(iccProfileBytes));
+      },
+      skip: canRunMetadataTests == false ? 'cjpeg or the macOS sRGB ICC profile is unavailable on this host.' : false,
+    );
+
+    test(
+      'WebP の ICCP チャンクを変換後の JPEG へ維持する',
+      () async {
+        final source = image.Image(width: 48, height: 32);
+        final iccProfileBytes = await sRgbIccProfile.readAsBytes();
+        final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}icc-source.webp');
+        final outputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}icc-output.jpg');
+        await inputFile.writeAsBytes(
+          _webPWithIccProfile(image.encodeWebP(source), iccProfileBytes, width: source.width, height: source.height),
+          flush: true,
+        );
+
+        await ImageConversionPipeline().convert(
+          ImageConversionRequest(
+            inputFile: inputFile,
+            outputFile: outputFile,
+            cjpegExecutable: cjpeg,
+            settings: const ConversionSettings(),
+          ),
+        );
+
+        expect(_iccProfileFromJpeg(await outputFile.readAsBytes()), orderedEquals(iccProfileBytes));
+      },
+      skip: canRunMetadataTests == false ? 'cjpeg or the macOS sRGB ICC profile is unavailable on this host.' : false,
+    );
+
+    test(
       '逐次バッチは個別失敗後に残りを変換し、停止後は残りを開始しない',
       () async {
         final firstInput = File('${temporaryDirectory.path}${Platform.pathSeparator}first.png');
@@ -460,6 +521,62 @@ void main() {
     );
 
     test(
+      '書き込み不可の出力先では入力と既存出力を保持する',
+      () async {
+        final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}readonly-source.png');
+        final outputDirectory = Directory('${temporaryDirectory.path}${Platform.pathSeparator}readonly-output');
+        final outputFile = File('${outputDirectory.path}${Platform.pathSeparator}readonly-output.jpg');
+        final inputBytes = Uint8List.fromList(image.encodePng(image.Image(width: 4, height: 4)));
+        final existingOutputBytes = Uint8List.fromList(image.encodeJpg(image.Image(width: 3, height: 3)));
+        await inputFile.writeAsBytes(inputBytes, flush: true);
+        await outputDirectory.create();
+        await outputFile.writeAsBytes(existingOutputBytes, flush: true);
+
+        final makeReadOnly = await Process.run('chmod', <String>['0555', outputDirectory.path]);
+        if (makeReadOnly.exitCode != 0) {
+          markTestSkipped('chmod could not make the output directory read-only on this host.');
+          return;
+        }
+
+        final writeProbe = File('${outputDirectory.path}${Platform.pathSeparator}write-probe');
+        var canWriteOutputDirectory = false;
+        try {
+          await writeProbe.writeAsString('probe', flush: true);
+          canWriteOutputDirectory = true;
+        } on FileSystemException {
+          // 書き込み不能を実測してから変換失敗時の入出力保持を検証する
+        }
+        if (canWriteOutputDirectory) {
+          await Process.run('chmod', <String>['0755', outputDirectory.path]);
+          markTestSkipped('The current user can write to chmod 0555 directories.');
+          return;
+        }
+
+        try {
+          await expectLater(
+            ImageConversionPipeline().convert(
+              ImageConversionRequest(
+                inputFile: inputFile,
+                outputFile: outputFile,
+                cjpegExecutable: cjpeg,
+                settings: const ConversionSettings(),
+              ),
+            ),
+            throwsA(isA<FileSystemException>()),
+          );
+
+          expect(await inputFile.readAsBytes(), orderedEquals(inputBytes));
+          expect(await outputFile.readAsBytes(), orderedEquals(existingOutputBytes));
+        } finally {
+          await Process.run('chmod', <String>['0755', outputDirectory.path]);
+        }
+      },
+      skip: Platform.isWindows
+          ? 'Windows does not provide the POSIX chmod permission boundary used by this test.'
+          : false,
+    );
+
+    test(
       '新規 JPEG の公開直前に同名ファイルが作られたときはその内容を残す',
       () async {
         final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}exclusive-source.png');
@@ -616,6 +733,39 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('アニメーション WebP を出力前に理由付きで拒否する', () async {
+      final animatedWebP = _animatedWebP();
+      final decoder = image.findDecoderForData(animatedWebP);
+      expect(decoder, isNotNull);
+      final decodeInfo = decoder!.startDecode(animatedWebP);
+      expect(decoder.numFrames(), 2);
+      expect(decodeInfo?.numFrames, 2);
+
+      final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}animated.webp');
+      final outputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}animated.jpg');
+      await inputFile.writeAsBytes(animatedWebP, flush: true);
+
+      await expectLater(
+        ImageConversionPipeline().convert(
+          ImageConversionRequest(
+            inputFile: inputFile,
+            outputFile: outputFile,
+            cjpegExecutable: cjpeg,
+            settings: const ConversionSettings(),
+          ),
+        ),
+        throwsA(
+          isA<UnsupportedImageException>().having(
+            (exception) => exception.message,
+            'message',
+            'Animated images cannot be converted.',
+          ),
+        ),
+      );
+
+      expect(await outputFile.exists(), isFalse);
     });
 
     test('PNG の上書きで入力と同じ出力先を拒否する', () async {
@@ -846,6 +996,86 @@ Uint8List _iccProfileFromJpeg(Uint8List jpegBytes) {
   }
   return profile.toBytes();
 }
+
+/// ICC プロファイルを JPEG APP2 の連番付き断片へ分割して挿入します。
+Uint8List _jpegWithIccProfile(Uint8List jpegBytes, Uint8List profileBytes) {
+  final fragmentPayloadLength = JpegMetadataSegment.maximumDataLength - _iccHeader.length - 2;
+  final fragmentCount = (profileBytes.length + fragmentPayloadLength - 1) ~/ fragmentPayloadLength;
+  final segments = <JpegMetadataSegment>[];
+  for (var sequence = 1; sequence <= fragmentCount; sequence += 1) {
+    final start = (sequence - 1) * fragmentPayloadLength;
+    final end = (start + fragmentPayloadLength).clamp(0, profileBytes.length);
+    final data = Uint8List(_iccHeader.length + 2 + end - start)
+      ..setAll(0, _iccHeader)
+      ..[12] = sequence
+      ..[13] = fragmentCount
+      ..setRange(14, 14 + end - start, profileBytes, start);
+    segments.add(JpegMetadataSegment(marker: 0xE2, data: data));
+  }
+  return ImageMetadataTransfer.inject(jpegBytes, segments);
+}
+
+/// `img2webp` で作成した2フレームの最小 WebP fixture を返します。
+Uint8List _animatedWebP() {
+  return base64Decode(
+    'UklGRoQAAABXRUJQVlA4WAoAAAACAAAAAQAAAQAAQU5JTQYAAAD/////AABBTk1GKAAAAAAAAAAAAAEAAAEAAGQAAAJWUDhMDwAAAC8BQAAABxDlj/4HIqL/AQBBTk1GKAAAAAAAAAAAAAEAAAEAAGQAAABWUDhMDwAAAC8BQAAABxDR/v4HIqL/AQA=',
+  );
+}
+
+/// 静止 WebP を ICCP 付きの拡張 WebP へ組み替えます。
+Uint8List _webPWithIccProfile(
+  Uint8List webP,
+  Uint8List profile, {
+  required int width,
+  required int height,
+}) {
+  final extendedHeader = _webPChunk(
+    'VP8X',
+    Uint8List.fromList(<int>[
+      0x20,
+      0x00,
+      0x00,
+      0x00,
+      ..._uint24LittleEndian(width - 1),
+      ..._uint24LittleEndian(height - 1),
+    ]),
+  );
+  final chunks = <int>[
+    ...extendedHeader,
+    ..._webPChunk('ICCP', profile),
+    ...webP.sublist(12),
+  ];
+  final riffLength = 4 + chunks.length;
+  return Uint8List.fromList(<int>[
+    ...ascii.encode('RIFF'),
+    ..._uint32LittleEndian(riffLength),
+    ...ascii.encode('WEBP'),
+    ...chunks,
+  ]);
+}
+
+/// WebP の RIFF チャンクを偶数バイト境界へ揃えて返します。
+List<int> _webPChunk(String type, Uint8List data) {
+  return <int>[
+    ...ascii.encode(type),
+    ..._uint32LittleEndian(data.lengthInBytes),
+    ...data,
+    if (data.lengthInBytes.isOdd) 0x00,
+  ];
+}
+
+List<int> _uint24LittleEndian(int value) => <int>[
+  value & 0xFF,
+  (value >> 8) & 0xFF,
+  (value >> 16) & 0xFF,
+];
+
+List<int> _uint32LittleEndian(int value) => <int>[
+  value & 0xFF,
+  (value >> 8) & 0xFF,
+  (value >> 16) & 0xFF,
+  (value >> 24) & 0xFF,
+];
 
 /// バイト列が指定ヘッダーで始まるか調べます。
 bool _hasPrefix(Uint8List bytes, List<int> header) {

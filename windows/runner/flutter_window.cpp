@@ -121,9 +121,18 @@ bool FlutterWindow::OnCreate() {
           kFileOperationsChannelName,
           &flutter::StandardMethodCodec::GetInstance());
   file_operations_channel_->SetMethodCallHandler(
-      [](const flutter::MethodCall<flutter::EncodableValue>& call,
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
          std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
              result) {
+        if (call.method_name() == "centerOnPointerScreen") {
+          if (CenterOnPointerScreen()) {
+            result->Success();
+          } else {
+            result->Error("WINDOW_POSITION_FAILED",
+                          "Could not center the window on the pointer screen.");
+          }
+          return;
+        }
         const bool is_copy_file_dates_call =
             call.method_name() == "copySourceFileDatesToOutputFile";
         const bool is_replace_staged_output_call =
