@@ -34,6 +34,7 @@ try {
         '-DCMAKE_POLICY_VERSION_MINIMUM=3.5'
         '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded'
         '-DWITH_TURBOJPEG=OFF'
+        '-DWITH_PNG=OFF'
         '-DENABLE_SHARED=OFF'
     )
     & $cmakeCommand.Path @configureArguments
