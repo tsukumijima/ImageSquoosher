@@ -69,7 +69,7 @@ jobs:
   build-windows:
     name: Build and verify Windows x64
     needs: quality
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
