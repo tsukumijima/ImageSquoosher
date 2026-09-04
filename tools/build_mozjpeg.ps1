@@ -8,7 +8,7 @@ $outputDirectory = Join-Path $projectRoot 'native/mozjpeg/windows'
 $workDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("image-squoosher-mozjpeg-" + [Guid]::NewGuid().ToString('N'))
 
 try {
-    $cmakeCommand = Get-Command cmake -CommandType Application -ErrorAction SilentlyContinue
+    $cmakeCommand = Get-Command cmake -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($null -eq $cmakeCommand) {
         throw 'Required command is missing: cmake.'
     }
