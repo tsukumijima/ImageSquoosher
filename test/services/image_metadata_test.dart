@@ -67,8 +67,79 @@ void main() {
         orderedEquals(xmp),
       );
     });
+
+    test('PNG の EXIF、XMP、Comment は JPEG セグメント上限まで移植する', () {
+      final maximumDataLength = JpegMetadataSegment.maximumDataLength;
+      final segments = <JpegMetadataSegment>[
+        ...ImageMetadataTransfer.collect(
+          _pngWithChunk('eXIf', Uint8List(maximumDataLength - 6)),
+          SourceImageFormat.png,
+        ),
+        ...ImageMetadataTransfer.collect(
+          _pngWithChunk(
+            'iTXt',
+            _pngInternationalTextData(Uint8List(maximumDataLength - _xmpHeaderLength)),
+          ),
+          SourceImageFormat.png,
+        ),
+        ...ImageMetadataTransfer.collect(
+          _pngWithChunk('tEXt', _pngTextData('Comment', Uint8List(maximumDataLength))),
+          SourceImageFormat.png,
+        ),
+      ];
+
+      expect(segments, hasLength(3));
+      expect(segments.map((segment) => segment.data.lengthInBytes), everyElement(maximumDataLength));
+    });
+
+    test('PNG の上限超過 EXIF、XMP、Comment は変換対象から外す', () {
+      final maximumDataLength = JpegMetadataSegment.maximumDataLength;
+      final sources = <Uint8List>[
+        _pngWithChunk('eXIf', Uint8List(maximumDataLength - 5)),
+        _pngWithChunk(
+          'iTXt',
+          _pngInternationalTextData(Uint8List(maximumDataLength - _xmpHeaderLength + 1)),
+        ),
+        _pngWithChunk('tEXt', _pngTextData('Comment', Uint8List(maximumDataLength + 1))),
+      ];
+
+      for (final source in sources) {
+        expect(ImageMetadataTransfer.collect(source, SourceImageFormat.png), isEmpty);
+      }
+    });
+
+    test('WebP の EXIF と XMP は JPEG セグメント上限まで移植する', () {
+      final maximumDataLength = JpegMetadataSegment.maximumDataLength;
+      final segments = <JpegMetadataSegment>[
+        ...ImageMetadataTransfer.collect(
+          _webPWithChunk('EXIF', Uint8List(maximumDataLength - 6)),
+          SourceImageFormat.webp,
+        ),
+        ...ImageMetadataTransfer.collect(
+          _webPWithChunk('XMP ', Uint8List(maximumDataLength - _xmpHeaderLength)),
+          SourceImageFormat.webp,
+        ),
+      ];
+
+      expect(segments, hasLength(2));
+      expect(segments.map((segment) => segment.data.lengthInBytes), everyElement(maximumDataLength));
+    });
+
+    test('WebP の上限超過 EXIF と XMP は変換対象から外す', () {
+      final maximumDataLength = JpegMetadataSegment.maximumDataLength;
+      final sources = <Uint8List>[
+        _webPWithChunk('EXIF', Uint8List(maximumDataLength - 5)),
+        _webPWithChunk('XMP ', Uint8List(maximumDataLength - _xmpHeaderLength + 1)),
+      ];
+
+      for (final source in sources) {
+        expect(ImageMetadataTransfer.collect(source, SourceImageFormat.webp), isEmpty);
+      }
+    });
   });
 }
+
+const _xmpHeaderLength = 29;
 
 Uint8List _jpegWithLittleEndianOrientation(int orientation) {
   final exifData = <int>[
@@ -120,7 +191,12 @@ Uint8List _jpegWithLittleEndianOrientation(int orientation) {
 }
 
 Uint8List _pngWithInternationalText(String keyword, Uint8List text) {
-  final textData = <int>[
+  return _pngWithChunk('iTXt', _pngInternationalTextData(text, keyword: keyword));
+}
+
+/// PNG iTXt の非圧縮テキストデータを作成します。
+Uint8List _pngInternationalTextData(Uint8List text, {String keyword = 'XML:com.adobe.xmp'}) {
+  return Uint8List.fromList(<int>[
     ...keyword.codeUnits,
     0x00,
     0x00,
@@ -128,7 +204,17 @@ Uint8List _pngWithInternationalText(String keyword, Uint8List text) {
     0x00,
     0x00,
     ...text,
-  ];
+  ]);
+}
+
+/// PNG tEXt のテキストデータを作成します。
+Uint8List _pngTextData(String keyword, Uint8List text) {
+  return Uint8List.fromList(<int>[...keyword.codeUnits, 0x00, ...text]);
+}
+
+/// PNG シグネチャと1個のチャンクだけを持つテスト入力を作成します。
+Uint8List _pngWithChunk(String type, Uint8List data) {
+  final length = data.lengthInBytes;
   return Uint8List.fromList(<int>[
     0x89,
     0x50,
@@ -138,18 +224,43 @@ Uint8List _pngWithInternationalText(String keyword, Uint8List text) {
     0x0A,
     0x1A,
     0x0A,
-    0x00,
-    0x00,
-    0x00,
-    textData.length,
-    0x69,
-    0x54,
-    0x58,
-    0x74,
-    ...textData,
+    length >> 24,
+    (length >> 16) & 0xFF,
+    (length >> 8) & 0xFF,
+    length & 0xFF,
+    ...type.codeUnits,
+    ...data,
     0x00,
     0x00,
     0x00,
     0x00,
+  ]);
+}
+
+/// RIFF/WEBP ヘッダーと1個のチャンクだけを持つテスト入力を作成します。
+Uint8List _webPWithChunk(String type, Uint8List data) {
+  final length = data.lengthInBytes;
+  final paddedLength = length + (length.isOdd ? 1 : 0);
+  final riffLength = 4 + 8 + paddedLength;
+  return Uint8List.fromList(<int>[
+    0x52,
+    0x49,
+    0x46,
+    0x46,
+    riffLength & 0xFF,
+    (riffLength >> 8) & 0xFF,
+    (riffLength >> 16) & 0xFF,
+    (riffLength >> 24) & 0xFF,
+    0x57,
+    0x45,
+    0x42,
+    0x50,
+    ...type.codeUnits,
+    length & 0xFF,
+    (length >> 8) & 0xFF,
+    (length >> 16) & 0xFF,
+    (length >> 24) & 0xFF,
+    ...data,
+    if (length.isOdd) 0x00,
   ]);
 }

@@ -29,6 +29,10 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
   late final TextEditingController _ratioHeightController;
   late final TextEditingController _resizeController;
   late final TextEditingController _suffixController;
+  final _ratioWidthFocusNode = FocusNode();
+  final _ratioHeightFocusNode = FocusNode();
+  final _resizeFocusNode = FocusNode();
+  final _suffixFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -44,10 +48,33 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     super.didUpdateWidget(oldWidget);
 
     // 入力中は入力欄側にも同じ値があるため、外部から既定値を戻した場合だけ表示値を置き換える
-    _synchronizeController(_ratioWidthController, widget.settings.aspectRatio.horizontal.toString());
-    _synchronizeController(_ratioHeightController, widget.settings.aspectRatio.vertical.toString());
-    _synchronizeController(_resizeController, widget.settings.resizeValue.toString());
-    _synchronizeController(_suffixController, widget.settings.suffix);
+    _synchronizeController(
+      _ratioWidthController,
+      _ratioWidthFocusNode,
+      oldWidget.settings.aspectRatio.horizontal.toString(),
+      widget.settings.aspectRatio.horizontal.toString(),
+      areEquivalent: _haveEqualDoubleValue,
+    );
+    _synchronizeController(
+      _ratioHeightController,
+      _ratioHeightFocusNode,
+      oldWidget.settings.aspectRatio.vertical.toString(),
+      widget.settings.aspectRatio.vertical.toString(),
+      areEquivalent: _haveEqualDoubleValue,
+    );
+    _synchronizeController(
+      _resizeController,
+      _resizeFocusNode,
+      oldWidget.settings.resizeValue.toString(),
+      widget.settings.resizeValue.toString(),
+      areEquivalent: _haveEqualIntValue,
+    );
+    _synchronizeController(
+      _suffixController,
+      _suffixFocusNode,
+      oldWidget.settings.suffix,
+      widget.settings.suffix,
+    );
   }
 
   @override
@@ -56,18 +83,41 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     _ratioHeightController.dispose();
     _resizeController.dispose();
     _suffixController.dispose();
+    _ratioWidthFocusNode.dispose();
+    _ratioHeightFocusNode.dispose();
+    _resizeFocusNode.dispose();
+    _suffixFocusNode.dispose();
     super.dispose();
   }
 
-  /// 保存済みの値が入力欄と異なる場合だけ、末尾へキャレットを置いて表示を同期します。
-  void _synchronizeController(TextEditingController controller, String value) {
-    if (controller.text == value) {
+  /// フォーカス中の中間入力を保ち、外部の設定変更だけを表示値へ反映します。
+  void _synchronizeController(
+    TextEditingController controller,
+    FocusNode focusNode,
+    String previousSavedValue,
+    String savedValue, {
+    bool Function(String currentValue, String savedValue)? areEquivalent,
+  }) {
+    final settingsAreUnchanged = previousSavedValue == savedValue;
+    final hasEquivalentValue = areEquivalent != null && areEquivalent(controller.text, savedValue);
+    final keepsFocusedInput = focusNode.hasFocus && (settingsAreUnchanged || hasEquivalentValue);
+    if (controller.text == savedValue || keepsFocusedInput) {
       return;
     }
     controller.value = TextEditingValue(
-      text: value,
-      selection: TextSelection.collapsed(offset: value.length),
+      text: savedValue,
+      selection: TextSelection.collapsed(offset: savedValue.length),
     );
+  }
+
+  /// 表記が異なっても同じ小数値を表す入力かを判定します。
+  bool _haveEqualDoubleValue(String currentValue, String savedValue) {
+    return double.tryParse(currentValue) == double.tryParse(savedValue);
+  }
+
+  /// 表記が異なっても同じ整数値を表す入力かを判定します。
+  bool _haveEqualIntValue(String currentValue, String savedValue) {
+    return int.tryParse(currentValue) == int.tryParse(savedValue);
   }
 
   /// 変更された項目以外を保った圧縮設定を親画面へ返します。
@@ -188,6 +238,7 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
           child: TextField(
             key: const ValueKey('ratio-width-field'),
             controller: _ratioWidthController,
+            focusNode: _ratioWidthFocusNode,
             keyboardType: TextInputType.number,
             decoration: _inputDecoration(),
             onChanged: (value) {
@@ -208,6 +259,7 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
           child: TextField(
             key: const ValueKey('ratio-height-field'),
             controller: _ratioHeightController,
+            focusNode: _ratioHeightFocusNode,
             keyboardType: TextInputType.number,
             decoration: _inputDecoration(),
             onChanged: (value) {
@@ -295,6 +347,7 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
             child: TextField(
               key: const ValueKey('resize-value-field'),
               controller: _resizeController,
+              focusNode: _resizeFocusNode,
               enabled: settings.resizeEnabled,
               keyboardType: TextInputType.number,
               decoration: _inputDecoration(),
@@ -414,6 +467,7 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                     child: TextField(
                       key: const ValueKey('suffix-field'),
                       controller: _suffixController,
+                      focusNode: _suffixFocusNode,
                       inputFormatters: [
                         TextInputFormatter.withFunction(
                           (oldValue, newValue) => OutputNamePlanner.isValidSuffix(newValue.text) ? newValue : oldValue,

@@ -8,7 +8,8 @@ $outputDirectory = Join-Path $projectRoot 'native/mozjpeg/windows'
 $workDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("image-squoosher-mozjpeg-" + [Guid]::NewGuid().ToString('N'))
 
 try {
-    if ($null -eq (Get-Command cmake -ErrorAction SilentlyContinue)) {
+    $cmakeCommand = Get-Command cmake -CommandType Application -ErrorAction SilentlyContinue
+    if ($null -eq $cmakeCommand) {
         throw 'Required command is missing: cmake.'
     }
 
@@ -22,16 +23,39 @@ try {
 
     # MozJPEG 4.1.1 の古い CMake 設定を現行 CMake でも評価できるよう互換ポリシーを指定する
     # JPEG ライブラリと MSVC ランタイムを静的リンクし、cjpeg.exe 単体をアプリへ含められる状態にする
-    cmake `
-        -S $sourceDirectory `
-        -B $buildDirectory `
-        -G 'Visual Studio 17 2022' `
-        -A x64 `
-        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
-        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
-        -DWITH_TURBOJPEG=OFF `
-        -DENABLE_SHARED=OFF
-    cmake --build $buildDirectory --config Release --target cjpeg-static --parallel
+    # PowerShell 7 でも小数点を含む定義値を1つの CMake 引数として渡せるよう配列で境界を固定する
+    $configureArguments = @(
+        '-S'
+        $sourceDirectory
+        '-B'
+        $buildDirectory
+        '-G'
+        'Visual Studio 17 2022'
+        '-A'
+        'x64'
+        '-DCMAKE_POLICY_VERSION_MINIMUM=3.5'
+        '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded'
+        '-DWITH_TURBOJPEG=OFF'
+        '-DENABLE_SHARED=OFF'
+    )
+    & $cmakeCommand.Path @configureArguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "CMake configuration failed with exit code: $LASTEXITCODE."
+    }
+
+    $buildArguments = @(
+        '--build'
+        $buildDirectory
+        '--config'
+        'Release'
+        '--target'
+        'cjpeg-static'
+        '--parallel'
+    )
+    & $cmakeCommand.Path @buildArguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "CMake build failed with exit code: $LASTEXITCODE."
+    }
 
     $builtExecutable = Get-ChildItem -Path $buildDirectory -Filter 'cjpeg-static.exe' -Recurse | Select-Object -First 1
     if ($null -eq $builtExecutable) {

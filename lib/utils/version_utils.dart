@@ -88,7 +88,7 @@ class SemanticVersion implements Comparable<SemanticVersion> {
 
 /// 2つのバージョン文字列を比較する。
 ///
-/// [version1] が新しい場合は正の値、[version2] が新しい場合は負の値、同じ場合は0を返す。
+/// [firstVersionString] が新しい場合は正の値、[secondVersionString] が新しい場合は負の値、同じ場合は0を返す。
 /// いずれかを解析できない場合は null を返す。
 int? compareVersions(String firstVersionString, String secondVersionString) {
   final firstVersion = SemanticVersion.tryParse(firstVersionString);

@@ -45,7 +45,10 @@ class _ImageSquoosherAppState extends State<ImageSquoosherApp> with WindowListen
     super.initState();
     _locale = Locale(widget.initialSettings.preferences.languageCode);
     _controller = SquoosherController();
-    _windowSettingsSaveQueue = WindowSettingsSaveQueue(save: _saveWindowSettings);
+    _windowSettingsSaveQueue = WindowSettingsSaveQueue(
+      save: _saveWindowSettings,
+      onError: _logWindowSettingsSaveError,
+    );
     windowManager.addListener(this);
     unawaited(windowManager.setPreventClose(true));
   }
@@ -61,17 +64,18 @@ class _ImageSquoosherAppState extends State<ImageSquoosherApp> with WindowListen
 
   /// 現在のウィンドウサイズだけを設定サービスへ保存する。
   Future<void> _saveWindowSettings() async {
-    try {
-      final size = await windowManager.getSize();
-      await widget.settingsService.saveWindowSettings(WindowSettings(width: size.width, height: size.height));
-    } catch (error, stackTrace) {
-      LoggingService.instance.error(
-        'Failed to save window settings.',
-        tag: 'App',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    final size = await windowManager.getSize();
+    await widget.settingsService.saveWindowSettings(WindowSettings(width: size.width, height: size.height));
+  }
+
+  /// 保存失敗をログへ残し、次の保存を実行できる状態へ戻す。
+  void _logWindowSettingsSaveError(Object error, StackTrace stackTrace) {
+    LoggingService.instance.error(
+      'Failed to save window settings.',
+      tag: 'App',
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 
   /// 終了前に保留中のサイズ保存と直列化済みの保存を完了させる。

@@ -5,12 +5,15 @@ import 'image_pipeline_types.dart';
 
 /// JPEG に表現できるメタデータ用の APP/COM セグメントです。
 class JpegMetadataSegment {
+  /// JPEG の1セグメントへ保存できるデータ本体の最大バイト数です。
+  static const maximumDataLength = 65533;
+
   /// セグメントを作成します。
   JpegMetadataSegment({required this.marker, required Uint8List data}) : data = Uint8List.fromList(data) {
     if (marker < 0xE0 || marker > 0xFE || marker == 0xDA) {
       throw ArgumentError.value(marker, 'marker', 'Marker must be APPn or COM.');
     }
-    if (this.data.lengthInBytes > 65533) {
+    if (this.data.lengthInBytes > maximumDataLength) {
       throw ArgumentError.value(
         this.data.lengthInBytes,
         'data.lengthInBytes',
@@ -141,21 +144,25 @@ class ImageMetadataTransfer {
         final exif = BytesBuilder(copy: false)
           ..add(const <int>[0x45, 0x78, 0x69, 0x66, 0x00, 0x00])
           ..add(data);
-        segments.add(
-          JpegMetadataSegment(
-            marker: 0xE1,
-            data: _normalizeExifOrientation(exif.toBytes()),
-          ),
-        );
+        final segment = _createSegmentIfFits(0xE1, _normalizeExifOrientation(exif.toBytes()));
+        if (segment != null) {
+          segments.add(segment);
+        }
       } else if (type == 'iTXt') {
         final xmp = _extractPngXmp(data);
         if (xmp != null) {
-          segments.add(_xmpSegment(xmp));
+          final segment = _xmpSegment(xmp);
+          if (segment != null) {
+            segments.add(segment);
+          }
         }
       } else if (type == 'tEXt') {
         final comment = _extractPngComment(data);
         if (comment != null) {
-          segments.add(JpegMetadataSegment(marker: 0xFE, data: comment));
+          final segment = _createSegmentIfFits(0xFE, comment);
+          if (segment != null) {
+            segments.add(segment);
+          }
         }
       }
       if (type == 'IEND') {
@@ -189,14 +196,15 @@ class ImageMetadataTransfer {
         final exif = BytesBuilder(copy: false)
           ..add(const <int>[0x45, 0x78, 0x69, 0x66, 0x00, 0x00])
           ..add(data);
-        segments.add(
-          JpegMetadataSegment(
-            marker: 0xE1,
-            data: _normalizeExifOrientation(exif.toBytes()),
-          ),
-        );
+        final segment = _createSegmentIfFits(0xE1, _normalizeExifOrientation(exif.toBytes()));
+        if (segment != null) {
+          segments.add(segment);
+        }
       } else if (type == 'XMP ') {
-        segments.add(_xmpSegment(data));
+        final segment = _xmpSegment(data);
+        if (segment != null) {
+          segments.add(segment);
+        }
       }
       offset = nextOffset;
     }
@@ -240,12 +248,20 @@ class ImageMetadataTransfer {
   }
 
   /// XMP の標準 APP1 名前空間を付けます。
-  static JpegMetadataSegment _xmpSegment(Uint8List xmp) {
+  static JpegMetadataSegment? _xmpSegment(Uint8List xmp) {
     const xmpHeader = 'http://ns.adobe.com/xap/1.0/\u0000';
     final data = BytesBuilder(copy: false)
       ..add(ascii.encode(xmpHeader))
       ..add(xmp);
-    return JpegMetadataSegment(marker: 0xE1, data: data.toBytes());
+    return _createSegmentIfFits(0xE1, data.toBytes());
+  }
+
+  /// JPEG の1セグメントへ収まるメタデータだけを変換結果へ移植します。
+  static JpegMetadataSegment? _createSegmentIfFits(int marker, Uint8List data) {
+    if (data.lengthInBytes > JpegMetadataSegment.maximumDataLength) {
+      return null;
+    }
+    return JpegMetadataSegment(marker: marker, data: data);
   }
 
   /// EXIF の IFD0 Orientation を 1 へ変更します。

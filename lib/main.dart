@@ -39,9 +39,30 @@ Future<void> main() async {
   );
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     if (Platform.isMacOS) {
-      await const MethodChannel(
-        'net.tsukumijima.image-squoosher/finder_sync',
-      ).invokeMethod<void>('centerOnPointerScreen');
+      // ポインター画面の座標を取得できない場合も、標準の中央配置と通常起動を継続する
+      try {
+        await const MethodChannel(
+          'net.tsukumijima.image-squoosher/finder_sync',
+        ).invokeMethod<void>('centerOnPointerScreen');
+      } catch (error, stackTrace) {
+        LoggingService.instance.warning(
+          'Failed to center the window on the pointer screen. Falling back to standard window centering.',
+          tag: 'Main',
+          error: error,
+          stackTrace: stackTrace,
+        );
+
+        try {
+          await windowManager.center();
+        } catch (error, stackTrace) {
+          LoggingService.instance.warning(
+            'Failed to center the window using standard placement.',
+            tag: 'Main',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+      }
     }
     await windowManager.show();
     await windowManager.focus();

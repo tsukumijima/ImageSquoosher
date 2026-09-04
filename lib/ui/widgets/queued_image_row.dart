@@ -110,8 +110,15 @@ class QueuedImageRow extends StatelessWidget {
   /// 切り抜き比率を反映した小さなプレビューを作ります。
   Widget _buildPreview(BuildContext context) {
     final sourceDimensions = queuedImage.sourceDimensions ?? const ImageDimensions(1, 1);
+    final sourceRatio = sourceDimensions.width / sourceDimensions.height;
     final requestedRatio = settings.aspectRatio.resolve(sourceDimensions);
     final previewRatio = requestedRatio.clamp(0.55, 1.8).toDouble();
+    final cacheSize = (48 * MediaQuery.devicePixelRatioOf(context)).round();
+    final previewWidth = previewRatio >= 1 ? cacheSize : (cacheSize * previewRatio).ceil();
+    final previewHeight = previewRatio >= 1 ? (cacheSize / previewRatio).ceil() : cacheSize;
+    // BoxFit.cover で切り抜かれる長辺は制限せず、枠を満たす短辺だけを物理解像度へ縮小してぼけとメモリ消費を抑える
+    final cacheWidth = sourceRatio <= previewRatio ? previewWidth : null;
+    final cacheHeight = sourceRatio > previewRatio ? previewHeight : null;
     return SizedBox(
       width: 48,
       height: 48,
@@ -123,6 +130,8 @@ class QueuedImageRow extends StatelessWidget {
             child: Image.file(
               File(queuedImage.path),
               fit: BoxFit.cover,
+              cacheWidth: cacheWidth,
+              cacheHeight: cacheHeight,
               errorBuilder: (context, error, stackTrace) => ColoredBox(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: const Center(child: Icon(Icons.image_not_supported_outlined, size: 20)),

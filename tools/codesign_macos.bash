@@ -66,7 +66,8 @@ function setup_keychain() {
         existing_keychains+=("$keychain_entry")
     done < <(security list-keychains -d user)
 
-    decode_base64_file "$MACOS_CERTIFICATE_P12_BASE64" "$certificate_path"
+    # 一時証明書が作成直後から所有者だけに読めるよう、作成時の `umask` も制限する
+    (umask 077; decode_base64_file "$MACOS_CERTIFICATE_P12_BASE64" "$certificate_path")
     chmod 600 "$certificate_path"
 
     # 一時キーチェーンを検索対象の先頭へ追加し、開発者のログインキーチェーンは現在の設定を保つ
@@ -83,7 +84,12 @@ function setup_keychain() {
         -s \
         -k "$keychain_password" \
         "$keychain_path" >/dev/null
-    security list-keychains -d user -s "$keychain_path" "${existing_keychains[@]}"
+    # `Bash 3.2` の `set -u` では空配列を展開できないため、既存キーチェーンの有無で呼び出しを分ける
+    if [ "${#existing_keychains[@]}" -eq 0 ]; then
+        security list-keychains -d user -s "$keychain_path"
+    else
+        security list-keychains -d user -s "$keychain_path" "${existing_keychains[@]}"
+    fi
 
     if [ -n "${GITHUB_ENV:-}" ]; then
         echo "MACOS_KEYCHAIN_PATH=$keychain_path" >> "$GITHUB_ENV"
@@ -245,7 +251,8 @@ function setup_notary_api_key() {
 
     local temp_root="${RUNNER_TEMP:-/tmp}"
     local api_key_path="$temp_root/AuthKey_${APPLE_API_KEY_ID}.p8"
-    decode_base64_file "$APPLE_API_KEY_P8_BASE64" "$api_key_path"
+    # 一時 API キーが作成直後から所有者だけに読めるよう、作成時の `umask` も制限する
+    (umask 077; decode_base64_file "$APPLE_API_KEY_P8_BASE64" "$api_key_path")
     chmod 600 "$api_key_path"
 
     if [ -n "${GITHUB_ENV:-}" ]; then

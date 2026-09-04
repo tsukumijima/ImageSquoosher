@@ -10,6 +10,7 @@ void main() {
       save: () async {
         saveCount += 1;
       },
+      onError: (error, stackTrace) {},
       debounceDuration: const Duration(milliseconds: 10),
     );
     addTearDown(queue.dispose);
@@ -39,6 +40,7 @@ void main() {
         }
         activeSaveCount -= 1;
       },
+      onError: (error, stackTrace) {},
     );
     addTearDown(queue.dispose);
 
@@ -50,5 +52,34 @@ void main() {
 
     expect(saveCount, 2);
     expect(maximumActiveSaveCount, 1);
+  });
+
+  test('保存失敗後も呼び出し側へ通知し、次の保存と flush を完了する', () async {
+    var saveCount = 0;
+    var errorCount = 0;
+    Object? capturedError;
+    StackTrace? capturedStackTrace;
+    final queue = WindowSettingsSaveQueue(
+      save: () async {
+        saveCount += 1;
+        if (saveCount == 1) {
+          throw StateError('first save failed');
+        }
+      },
+      onError: (error, stackTrace) {
+        errorCount += 1;
+        capturedError = error;
+        capturedStackTrace = stackTrace;
+      },
+    );
+    addTearDown(queue.dispose);
+
+    await queue.flush();
+    await queue.flush();
+
+    expect(saveCount, 2);
+    expect(errorCount, 1);
+    expect(capturedError, isA<StateError>());
+    expect(capturedStackTrace, isNot(StackTrace.empty));
   });
 }

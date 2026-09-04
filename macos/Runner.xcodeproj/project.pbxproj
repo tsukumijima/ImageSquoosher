@@ -325,10 +325,6 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				E4FA0012A9B24D3E8F000012 = {
-					CreatedOnToolsVersion = 16.2;
-					ProvisioningStyle = Automatic;
-				};
 				LastSwiftUpdateCheck = 0920;
 				LastUpgradeCheck = 1510;
 				ORGANIZATIONNAME = "";
@@ -350,6 +346,10 @@
 					33CC111A2044C6BA0003C045 = {
 						CreatedOnToolsVersion = 9.2;
 						ProvisioningStyle = Manual;
+					};
+					E4FA0012A9B24D3E8F000012 = {
+						CreatedOnToolsVersion = 16.2;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -871,7 +871,7 @@
 		E4FA0018A9B24D3E8F000018 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = FinderSync/FinderSyncDebug.entitlements;
+				CODE_SIGN_ENTITLEMENTS = FinderSync/FinderSync.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				INFOPLIST_FILE = FinderSync/Info.plist;
@@ -892,7 +892,7 @@
 		E4FA0019A9B24D3E8F000019 /* Profile */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = FinderSync/FinderSyncDebug.entitlements;
+				CODE_SIGN_ENTITLEMENTS = FinderSync/FinderSync.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				INFOPLIST_FILE = FinderSync/Info.plist;

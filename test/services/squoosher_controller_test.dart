@@ -226,6 +226,147 @@ void main() {
       );
       expect(controller.images.single.outputDimensions, const ImageDimensions(4, 3));
     });
+
+    test('出力計画の待機中に一覧が変更されても現在の画像へ安全に適用する', () async {
+      final mutationNames = <String>['remove', 'clear', 'replace'];
+      for (final mutationName in mutationNames) {
+        final inputFiles = <File>[
+          File('${temporaryDirectory.path}${Platform.pathSeparator}$mutationName-first.png'),
+          File('${temporaryDirectory.path}${Platform.pathSeparator}$mutationName-second.png'),
+        ];
+        for (final inputFile in inputFiles) {
+          await inputFile.writeAsBytes(image.encodePng(image.Image(width: 8, height: 6)), flush: true);
+        }
+        final planStarted = Completer<void>();
+        final releasePlan = Completer<Set<String>>();
+        var isFirstRead = true;
+        final controller = SquoosherController(
+          existingPathsReader: (_) {
+            if (isFirstRead) {
+              isFirstRead = false;
+              planStarted.complete();
+              return releasePlan.future;
+            }
+            return Future<Set<String>>.value(<String>{});
+          },
+        );
+
+        expect(controller.addFiles(inputFiles.map((inputFile) => inputFile.path)), 2);
+        await _waitForImageDetails(controller);
+        final planFuture = controller.updateOutputPlans(const ConversionSettings(suffix: '_planned'));
+        await planStarted.future;
+
+        switch (mutationName) {
+          case 'remove':
+            controller.removeFile(inputFiles.first.path);
+          case 'clear':
+            controller.clear();
+          case 'replace':
+            controller.replaceFiles(<String>[inputFiles.last.path]);
+        }
+        releasePlan.complete(<String>{});
+
+        await expectLater(planFuture, completes);
+        if (mutationName == 'replace') {
+          await _waitForImageDetails(controller);
+        }
+        final expectedPaths = switch (mutationName) {
+          'remove' => <String>[inputFiles.last.path],
+          'clear' => <String>[],
+          _ => <String>[inputFiles.last.path],
+        };
+        expect(controller.images.map((queuedImage) => queuedImage.path), expectedPaths);
+        if (mutationName != 'clear') {
+          final expectedOutputPath =
+              '${temporaryDirectory.path}${Platform.pathSeparator}$mutationName-second_planned.jpg';
+          for (var attempt = 0; attempt < 50; attempt += 1) {
+            if (controller.images.single.outputPath == expectedOutputPath) {
+              break;
+            }
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+          }
+          expect(controller.images.single.outputPath, expectedOutputPath);
+        }
+        controller.dispose();
+      }
+    });
+
+    test('出力計画の待機中に画像を外すと残った画像の出力名を再計画する', () async {
+      final inputFiles = <File>[
+        File('${temporaryDirectory.path}${Platform.pathSeparator}source.png'),
+        File('${temporaryDirectory.path}${Platform.pathSeparator}source.jpg'),
+      ];
+      await inputFiles.first.writeAsBytes(image.encodePng(image.Image(width: 8, height: 6)), flush: true);
+      await inputFiles.last.writeAsBytes(image.encodeJpg(image.Image(width: 8, height: 6)), flush: true);
+      final planStarted = Completer<void>();
+      final releasePlan = Completer<Set<String>>();
+      var readCount = 0;
+      final controller = SquoosherController(
+        existingPathsReader: (_) {
+          readCount += 1;
+          if (readCount == 1) {
+            planStarted.complete();
+            return releasePlan.future;
+          }
+          return Future<Set<String>>.value(<String>{});
+        },
+      );
+
+      expect(controller.addFiles(inputFiles.map((inputFile) => inputFile.path)), 2);
+      await _waitForImageDetails(controller);
+      final stalePlan = controller.updateOutputPlans(const ConversionSettings(suffix: '_planned'));
+      await planStarted.future;
+      controller.removeFile(inputFiles.first.path);
+      releasePlan.complete(<String>{});
+      await stalePlan;
+
+      for (var attempt = 0; attempt < 50; attempt += 1) {
+        if (controller.images.single.outputPath?.endsWith('source_planned.jpg') == true) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(
+        controller.images.single.outputPath,
+        '${temporaryDirectory.path}${Platform.pathSeparator}source_planned.jpg',
+      );
+    });
+
+    test('出力計画の待機中に変更された行状態を計画結果で巻き戻さない', () async {
+      final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}source.png');
+      await inputFile.writeAsBytes(image.encodePng(image.Image(width: 8, height: 6)), flush: true);
+      final planStarted = Completer<void>();
+      final releasePlan = Completer<Set<String>>();
+      var readCount = 0;
+      final controller = SquoosherController(
+        engine: _ScriptedCompressionEngine(),
+        existingPathsReader: (_) {
+          readCount += 1;
+          if (readCount == 2) {
+            planStarted.complete();
+            return releasePlan.future;
+          }
+          return Future<Set<String>>.value(<String>{});
+        },
+      );
+
+      expect(controller.addFiles(<String>[inputFile.path]), 1);
+      await _waitForImageDetails(controller);
+      expect(await controller.compress(const ConversionSettings()), isTrue);
+      expect(controller.images.single.status, QueuedImageStatus.completed);
+
+      final plan = controller.updateOutputPlans(const ConversionSettings(suffix: '_planned'));
+      await planStarted.future;
+      controller.resetResults();
+      releasePlan.complete(<String>{});
+      await plan;
+
+      expect(controller.images.single.status, QueuedImageStatus.queued);
+      expect(
+        controller.images.single.outputPath,
+        '${temporaryDirectory.path}${Platform.pathSeparator}source_planned.jpg',
+      );
+    });
   });
 }
 

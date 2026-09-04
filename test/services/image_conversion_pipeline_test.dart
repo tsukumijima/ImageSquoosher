@@ -12,9 +12,12 @@ import 'package:image_squoosher/services/image_metadata.dart';
 import 'package:image_squoosher/services/image_pipeline_types.dart';
 
 void main() {
-  const cjpegPath = '/opt/homebrew/bin/cjpeg';
   const sRgbIccProfilePath = '/System/Library/ColorSync/Profiles/sRGB Profile.icc';
-  final cjpeg = File(Platform.environment['IMAGE_SQUOOSHER_CJPEG'] ?? cjpegPath);
+  // 既定では配布物と同じ MozJPEG 4.1.1 のリポジトリ内ビルドを使い、配布検証時だけ環境変数の実行ファイルへ差し替える
+  final repositoryCjpegPath = Platform.isWindows
+      ? 'native/mozjpeg/windows/cjpeg.exe'
+      : 'native/mozjpeg/macos/arm64/cjpeg';
+  final cjpeg = File(Platform.environment['IMAGE_SQUOOSHER_CJPEG'] ?? repositoryCjpegPath);
   final canRunCjpeg = cjpeg.existsSync();
   final sRgbIccProfile = File(sRgbIccProfilePath);
   final canRunMetadataTests = canRunCjpeg && sRgbIccProfile.existsSync();
@@ -497,6 +500,35 @@ void main() {
 
         expect(retryResult.outputFile.path, outputFile.path);
         expect(await outputFile.exists(), isTrue);
+      },
+      skip: canRunCjpeg == false ? 'cjpeg is unavailable on this host.' : false,
+    );
+
+    test(
+      '新規 JPEG の予約後に任意例外が起きたときも予約ファイルを残さない',
+      () async {
+        final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}state-error-source.png');
+        final outputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}state-error-output.jpg');
+        final publicationFailure = StateError('Reserved output publication failed.');
+        await inputFile.writeAsBytes(image.encodePng(image.Image(width: 4, height: 4)), flush: true);
+
+        await expectLater(
+          ImageConversionPipeline(
+            replaceStagedOutput: (_, _) async {
+              throw publicationFailure;
+            },
+          ).convert(
+            ImageConversionRequest(
+              inputFile: inputFile,
+              outputFile: outputFile,
+              cjpegExecutable: cjpeg,
+              settings: const ConversionSettings(),
+            ),
+          ),
+          throwsA(same(publicationFailure)),
+        );
+
+        expect(await outputFile.exists(), isFalse);
       },
       skip: canRunCjpeg == false ? 'cjpeg is unavailable on this host.' : false,
     );

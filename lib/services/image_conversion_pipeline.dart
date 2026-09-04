@@ -358,12 +358,12 @@ class ImageConversionPipeline {
       } else {
         await stagedOutput.rename(outputFile.path);
       }
-    } on FileSystemException {
+    } catch (_) {
       if (hasReservedOutput) {
         try {
           // 排他的に作成した予約ファイルだけを取り除き、次回も同じ出力名を選べるようにする
           await outputFile.delete();
-        } on FileSystemException {
+        } catch (_) {
           // 削除結果にかかわらず、元の公開失敗をキューへ返す
         }
       }

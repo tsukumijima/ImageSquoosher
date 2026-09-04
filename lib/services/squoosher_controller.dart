@@ -264,6 +264,7 @@ class SquoosherController extends ChangeNotifier {
   final List<QueuedImage> _images = [];
   ImageConversionStopToken? _stopToken;
   ConversionSettings? _displaySettings;
+  // ディスク確認中に設定やキューが変わった場合、古い出力計画を画面へ反映しないための世代番号
   int _outputPlanGeneration = 0;
   bool _isCompressing = false;
   bool _isStopping = false;
@@ -295,6 +296,7 @@ class SquoosherController extends ChangeNotifier {
       _loadImageDetails(path);
     }
     if (addedCount > 0) {
+      _outputPlanGeneration += 1;
       _log.info('Images added: $addedCount.', tag: 'Queue');
       notifyListeners();
     }
@@ -306,6 +308,7 @@ class SquoosherController extends ChangeNotifier {
     if (_isCompressing) {
       return 0;
     }
+    _outputPlanGeneration += 1;
     _images.clear();
     final addedCount = addFiles(paths);
     if (addedCount == 0) {
@@ -319,6 +322,7 @@ class SquoosherController extends ChangeNotifier {
     if (_isCompressing || _images.isEmpty) {
       return;
     }
+    _outputPlanGeneration += 1;
     _images.clear();
     _log.info('Image queue cleared.', tag: 'Queue');
     notifyListeners();
@@ -329,8 +333,17 @@ class SquoosherController extends ChangeNotifier {
     if (_isCompressing) {
       return;
     }
-    _images.removeWhere((image) => image.path == path);
+    final index = _images.indexWhere((image) => image.path == path);
+    if (index < 0) {
+      return;
+    }
+    _outputPlanGeneration += 1;
+    _images.removeAt(index);
     notifyListeners();
+    final displaySettings = _displaySettings;
+    if (displaySettings != null && _images.isNotEmpty) {
+      unawaited(updateOutputPlans(displaySettings));
+    }
   }
 
   /// 完了・失敗・停止済みの行を、同じ設定で再実行できる待機状態へ戻します。
@@ -352,9 +365,9 @@ class SquoosherController extends ChangeNotifier {
     _displaySettings = settings;
     final plannedPaths = <String>{};
     final existingPathsByDirectory = <String, Set<String>>{};
-    final updatedImages = <int, QueuedImage>{};
-    for (var index = 0; index < _images.length; index += 1) {
-      final queuedImage = _images[index];
+    final outputPlans = <String, ({String outputPath, ImageDimensions outputDimensions})>{};
+    final imagesToPlan = List<QueuedImage>.of(_images);
+    for (final queuedImage in imagesToPlan) {
       final sourceDimensions = queuedImage.sourceDimensions;
       if (sourceDimensions == null) {
         continue;
@@ -374,7 +387,7 @@ class SquoosherController extends ChangeNotifier {
         overwrite: settings.overwrite,
       );
       plannedPaths.add(outputPlan.outputPath);
-      updatedImages[index] = queuedImage.copyWith(
+      outputPlans[queuedImage.path] = (
         outputPath: outputPlan.outputPath,
         outputDimensions: settings.plan(sourceDimensions).output,
       );
@@ -383,8 +396,15 @@ class SquoosherController extends ChangeNotifier {
     if (outputPlanGeneration != _outputPlanGeneration) {
       return;
     }
-    for (final entry in updatedImages.entries) {
-      _images[entry.key] = entry.value;
+    for (final entry in outputPlans.entries) {
+      final index = _images.indexWhere((image) => image.path == entry.key);
+      if (index >= 0) {
+        // 計画処理が所有する2項目だけを最新の行へ反映し、処理状態やエラーを巻き戻さない
+        _images[index] = _images[index].copyWith(
+          outputPath: entry.value.outputPath,
+          outputDimensions: entry.value.outputDimensions,
+        );
+      }
     }
     notifyListeners();
   }

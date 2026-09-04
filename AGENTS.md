@@ -5,8 +5,8 @@
 ImageSquoosher は、JPEG・PNG・WebP の静止画を中央クロップ、リサイズし、MozJPEG で JPEG へ圧縮する Flutter Desktop アプリです。  
 対応プラットフォームは macOS 12 以降の Apple Silicon と Windows 10 / 11 x64 です。
 
-デスクトップアプリとしての基本設計と開発工程は、兄弟リポジトリ `../Alpha-Import-Utility/AGENTS.md` を正本として参照します。  
-画像変換、元画像の置き換え、Finder Sync、MozJPEG の配布に関する ImageSquoosher 固有の仕様は、この文書と利用者向け README を優先します。
+デスクトップアプリの設計、開発工程、画像変換、元画像の置き換え、Finder Sync、MozJPEG の配布に関する規範は、この文書に定めます。  
+利用者向けの操作と配布手順は、[README.md](README.md) と [README_Japanese.md](README_Japanese.md) に記載します。
 
 ## 技術スタック
 

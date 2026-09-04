@@ -18,7 +18,11 @@ void main() {
 
   testWidgets('Desktop で複数画像を圧縮し、個別失敗後も結果を表示する', (tester) async {
     final temporaryDirectory = await Directory.systemTemp.createTemp('image-squoosher-desktop-e2e-');
-    final cjpegPath = Platform.environment['IMAGE_SQUOOSHER_CJPEG'];
+    // 既定では配布物と同じ MozJPEG 4.1.1 のリポジトリ内ビルドを使い、配布検証時だけ環境変数の実行ファイルへ差し替える
+    final repositoryCjpegPath = Platform.isWindows
+        ? 'native/mozjpeg/windows/cjpeg.exe'
+        : 'native/mozjpeg/macos/arm64/cjpeg';
+    final cjpegPath = Platform.environment['IMAGE_SQUOOSHER_CJPEG'] ?? repositoryCjpegPath;
     final inputPaths = <String>[];
 
     addTearDown(() async {
@@ -26,8 +30,7 @@ void main() {
     });
 
     expect(Platform.isMacOS || Platform.isWindows, isTrue, reason: 'Desktop runner is required.');
-    expect(cjpegPath, isNotNull, reason: 'IMAGE_SQUOOSHER_CJPEG must point to the built cjpeg executable.');
-    expect(await File(cjpegPath!).exists(), isTrue, reason: 'Configured cjpeg executable was not found.');
+    expect(await File(cjpegPath).exists(), isTrue, reason: 'MozJPEG 4.1.1 cjpeg executable was not found.');
 
     final firstInput = File('${temporaryDirectory.path}${Platform.pathSeparator}first.png');
     final secondInput = File('${temporaryDirectory.path}${Platform.pathSeparator}second.png');
@@ -118,6 +121,7 @@ void main() {
     expect(find.text('失敗'), findsOneWidget);
     expect(await firstOutput.exists(), isTrue);
     expect(await secondOutput.exists(), isTrue);
+    expect(await brokenInput.exists(), isTrue);
     expect(await File('${temporaryDirectory.path}${Platform.pathSeparator}broken_e2e.jpg').exists(), isFalse);
     expect(image.decodeJpg(await firstOutput.readAsBytes())?.width, 24);
     expect(image.decodeJpg(await firstOutput.readAsBytes())?.height, 24);

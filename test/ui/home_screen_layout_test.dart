@@ -98,6 +98,14 @@ class _SettingsPanelHostState extends State<_SettingsPanelHost> {
     );
   }
 
+  void restoreDefaults() {
+    setState(() => _settings = const ConversionSettings());
+  }
+
+  void rebuildWithoutChangingSettings() {
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return ConversionSettingsPanel(
@@ -308,6 +316,95 @@ void main() {
     await tester.pump();
     expect(find.text('1280'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('numeric settings fields keep intermediate input across parent rebuilds', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(520, 560);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(const Color(0xff0a84ff)),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(body: _SettingsPanelHost()),
+      ),
+    );
+
+    final hostState = tester.state<_SettingsPanelHostState>(find.byType(_SettingsPanelHost));
+    hostState.useCustomAspectRatio();
+    await tester.pump();
+
+    final ratioWidthField = find.byKey(const ValueKey('ratio-width-field'));
+    await tester.tap(ratioWidthField);
+    await tester.enterText(ratioWidthField, '');
+    hostState.rebuildWithoutChangingSettings();
+    await tester.pump();
+    expect(tester.widget<TextField>(ratioWidthField).controller!.text, isEmpty);
+
+    await tester.enterText(ratioWidthField, '2.50');
+    await tester.pump();
+    expect(tester.widget<TextField>(ratioWidthField).controller!.text, '2.50');
+    expect(hostState._settings.aspectRatio.horizontal, 2.5);
+
+    await tester.tap(find.text('Resize'));
+    await tester.pumpAndSettle();
+    final resizeValueField = find.byKey(const ValueKey('resize-value-field'));
+    await tester.showKeyboard(resizeValueField);
+    await tester.enterText(resizeValueField, '007');
+    await tester.pump();
+    expect(tester.widget<TextField>(resizeValueField).controller!.text, '007');
+    expect(hostState._settings.resizeValue, 7);
+
+    hostState.restoreDefaults();
+    await tester.pump();
+    expect(tester.widget<TextField>(resizeValueField).controller!.text, '1920');
+  });
+
+  testWidgets('thumbnail decoding constrains only the cover axis at physical pixel size', (tester) async {
+    tester.view.devicePixelRatio = 2;
+    tester.view.physicalSize = const Size(1240, 1360);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    for (final testCase in <({ImageDimensions dimensions, int? width, int? height})>[
+      (dimensions: const ImageDimensions(100, 100), width: 96, height: null),
+      (dimensions: const ImageDimensions(200, 100), width: null, height: 54),
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(const Color(0xff0a84ff)),
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: QueuedImageRow(
+              queuedImage: QueuedImage(path: '/nonexistent.jpg', sourceDimensions: testCase.dimensions),
+              settings: const ConversionSettings(
+                aspectRatio: image_settings.AspectRatio.preset(image_settings.AspectRatioPreset.ratio16x9),
+              ),
+              canRemove: true,
+              onOpenFile: () {},
+              onOpenFolder: () {},
+              onRemove: () {},
+            ),
+          ),
+        ),
+      );
+
+      final imageWidget = tester.widget<Image>(
+        find.descendant(of: find.byType(QueuedImageRow), matching: find.byType(Image)),
+      );
+      final resizeImage = imageWidget.image as ResizeImage;
+      expect(resizeImage.width, testCase.width);
+      expect(resizeImage.height, testCase.height);
+    }
   });
 
   testWidgets('custom aspect ratio stays on one row at minimum width', (tester) async {

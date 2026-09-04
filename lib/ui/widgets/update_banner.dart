@@ -18,12 +18,14 @@ class UpdateBanner extends StatelessWidget {
   /// リリースページを標準ブラウザで開く。
   Future<void> _openReleasePage(BuildContext context) async {
     final releaseURL = result.releaseURL;
-    if (releaseURL == null) {
+    final releaseURI = releaseURL == null ? null : Uri.tryParse(releaseURL);
+    // 更新 API の URL は外部入力なので、HTTPS のホスト付き URL だけを標準ブラウザへ渡す
+    if (releaseURI == null || releaseURI.scheme != 'https' || releaseURI.host.isEmpty) {
       return;
     }
 
     try {
-      final opened = await launchUrl(Uri.parse(releaseURL), mode: LaunchMode.externalApplication);
+      final opened = await launchUrl(releaseURI, mode: LaunchMode.externalApplication);
       if (opened == false && context.mounted) {
         final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
