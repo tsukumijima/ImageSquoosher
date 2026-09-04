@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as image;
 import 'package:image_squoosher/models/aspect_ratio.dart';
@@ -12,6 +13,8 @@ import 'package:image_squoosher/services/image_metadata.dart';
 import 'package:image_squoosher/services/image_pipeline_types.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const fileOperationsChannel = MethodChannel('net.tsukumijima.image-squoosher/finder_sync');
   const sRgbIccProfilePath = '/System/Library/ColorSync/Profiles/sRGB Profile.icc';
   // 既定では配布物と同じ MozJPEG 4.1.1 のリポジトリ内ビルドを使い、配布検証時だけ環境変数の実行ファイルへ差し替える
   final repositoryCjpegPath = Platform.isWindows
@@ -21,6 +24,35 @@ void main() {
   final canRunCjpeg = cjpeg.existsSync();
   final sRgbIccProfile = File(sRgbIccProfilePath);
   final canRunMetadataTests = canRunCjpeg && sRgbIccProfile.existsSync();
+
+  setUpAll(() {
+    if (Platform.isWindows == false) {
+      return;
+    }
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      fileOperationsChannel,
+      (call) async {
+        if (call.method != 'replaceStagedOutputAtomically') {
+          return null;
+        }
+        final arguments = call.arguments! as Map<Object?, Object?>;
+        final stagedOutput = File(arguments['stagedOutputPath']! as String);
+        final outputFile = File(arguments['outputPath']! as String);
+        if (await outputFile.exists()) {
+          await outputFile.delete();
+        }
+        await stagedOutput.rename(outputFile.path);
+        return null;
+      },
+    );
+  });
+
+  tearDownAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      fileOperationsChannel,
+      null,
+    );
+  });
 
   group('ImageConversionPipeline', () {
     late Directory temporaryDirectory;

@@ -24,6 +24,8 @@ void main() {
         : 'native/mozjpeg/macos/arm64/cjpeg';
     final cjpegPath = Platform.environment['IMAGE_SQUOOSHER_CJPEG'] ?? repositoryCjpegPath;
     final inputPaths = <String>[];
+    var didLoadFinderSelection = false;
+    var didLoadFinderSyncStatus = false;
 
     addTearDown(() async {
       await temporaryDirectory.delete(recursive: true);
@@ -45,9 +47,11 @@ void main() {
       finderMethodChannel,
       (call) async {
         if (call.method == 'getFinderSelectedImageURLs') {
+          didLoadFinderSelection = true;
           return inputPaths;
         }
         if (call.method == 'isFinderSyncExtensionEnabled') {
+          didLoadFinderSyncStatus = true;
           return false;
         }
         if (call.method == 'copySourceFileDatesToOutputFile') {
@@ -92,7 +96,14 @@ void main() {
       ),
     );
 
-    await _waitFor(tester, () => find.byType(QueuedImageRow).evaluate().length == 3);
+    await _waitFor(
+      tester,
+      () => find.byType(QueuedImageRow).evaluate().length == 3 && didLoadFinderSelection && didLoadFinderSyncStatus,
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      finderMethodChannel,
+      null,
+    );
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('1:1').last);
