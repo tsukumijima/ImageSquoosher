@@ -253,14 +253,18 @@ void main() {
               final openFile = find.byTooltip(l10n.openFile);
               final openFolder = find.byTooltip(l10n.openFolder);
               expect(tester.getTopLeft(openFile).dy, tester.getTopLeft(openFolder).dy);
-              expect(tester.getTopRight(openFolder).dx, tester.getTopRight(find.byTooltip(l10n.removeItem)).dx);
+              expect(tester.getTopLeft(openFolder).dy, tester.getTopLeft(find.byTooltip(l10n.removeItem)).dy);
+              expect(
+                tester.getTopRight(openFolder).dx,
+                lessThanOrEqualTo(tester.getTopLeft(find.byTooltip(l10n.removeItem)).dx),
+              );
               final startButton = find.ancestor(
                 of: find.text(l10n.start),
                 matching: find.byWidgetPredicate((widget) => widget is CupertinoButton),
               );
               expect(tester.widget<CupertinoButton>(startButton).onPressed, isNull);
               expect(find.text(l10n.compressionComplete), findsOneWidget);
-              expect(find.textContaining('(-69.3%)'), findsOneWidget);
+              expect(find.textContaining(l10n.compressionReduction('69'), findRichText: true), findsOneWidget);
               expect(
                 tester.getBottomRight(row).dy,
                 lessThanOrEqualTo(tester.getTopLeft(find.byType(CompressionFooter)).dy),
@@ -299,7 +303,7 @@ void main() {
 
       for (final label in [
         'Quality',
-        'Crop aspect ratio',
+        'Aspect ratio',
         'Filename suffix',
         'Resize',
         'Allow upscaling',
@@ -312,7 +316,7 @@ void main() {
       }
     });
 
-    testWidgets('primary Cupertino buttons use white text and icons', (tester) async {
+    testWidgets('conversion start uses white text and icons while image addition uses a neutral color', (tester) async {
       await _pumpHomeScreen(
         tester,
         size: const Size(620, 680),
@@ -321,10 +325,15 @@ void main() {
       );
 
       final buttons = find.ancestor(
-        of: find.textContaining(RegExp('^(画像を追加|圧縮を開始)\$')),
+        of: find.text('変換開始'),
         matching: find.byType(CupertinoButton),
       );
-      expect(buttons, findsNWidgets(2));
+      expect(buttons, findsOneWidget);
+      final addButton = tester.widget<FilledButton>(
+        find.ancestor(of: find.text('画像を追加'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)),
+      );
+      final colorScheme = Theme.of(tester.element(find.byWidget(addButton))).colorScheme;
+      expect(addButton.style!.backgroundColor!.resolve({}), colorScheme.surfaceContainerHighest);
       for (final element in buttons.evaluate()) {
         final button = element.widget as CupertinoButton;
         if (button.onPressed != null) {
@@ -680,7 +689,7 @@ void main() {
     final host = tester.state<_SettingsPanelHostState>(find.byType(_SettingsPanelHost));
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
-    expect(Focus.of(tester.element(find.byType(CupertinoSlider))).hasFocus, isTrue);
+    expect(FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<Slider>(), isNotNull);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     expect(host._settings.quality, 91);
@@ -759,7 +768,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('resize-axis-select')));
     await tester.pumpAndSettle();
     expect(host._settings.resizeAxis, ResizeAxis.width);
-    expect(find.text('Height'), findsNothing);
+    expect(find.text('Resize by height'), findsNothing);
 
     // 候補を上下キーで移動して確定し、カスタム入力への切り替えも確認する
     await tester.tap(find.byKey(const ValueKey('aspect-ratio-select')));
@@ -768,7 +777,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
-    expect(host._settings.aspectRatio.preset, image_settings.AspectRatioPreset.square);
+    expect(host._settings.aspectRatio.preset, image_settings.AspectRatioPreset.ratio9x16);
     await tester.tap(find.byKey(const ValueKey('aspect-ratio-select')));
     await tester.pumpAndSettle();
     final menuScroll = find.descendant(
@@ -967,13 +976,13 @@ void main() {
 
     final homeState = tester.state<HomeScreenState>(find.byType(HomeScreen));
     // 変換中は設定のフォーカス取得を拒否し、矢印キーでも画質を保持する
-    final qualityFocus = Focus.of(tester.element(find.byType(CupertinoSlider)));
+    final qualityFocus = Focus.of(tester.element(find.byType(Slider)));
     qualityFocus.requestFocus();
     await tester.pump();
     expect(qualityFocus.hasFocus, isFalse);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
-    expect(tester.widget<CupertinoSlider>(find.byType(CupertinoSlider)).value, 90);
+    expect(tester.widget<Slider>(find.byType(Slider)).value, 90);
     await homeState.handleWindowClose();
 
     expect(controller.didRequestStop, isTrue);

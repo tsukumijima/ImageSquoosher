@@ -127,8 +127,8 @@ void main() {
     await tester.enterText(find.byKey(const ValueKey('suffix-field')), '_e2e');
     await tester.pump(const Duration(milliseconds: 300));
 
-    await tester.ensureVisible(find.text('圧縮を開始'));
-    await tester.tap(find.text('圧縮を開始'));
+    await tester.ensureVisible(find.text('変換開始'));
+    await tester.tap(find.text('変換開始'));
     await _waitFor(
       tester,
       () => controller.completedCount == 2 && controller.failedCount == 1 && controller.isCompressing == false,
@@ -136,7 +136,7 @@ void main() {
 
     final firstOutput = File('${temporaryDirectory.path}${Platform.pathSeparator}first_e2e.jpg');
     final secondOutput = File('${temporaryDirectory.path}${Platform.pathSeparator}second_e2e.jpg');
-    expect(find.text('圧縮完了：2件成功、1件失敗'), findsOneWidget);
+    expect(find.text('2件の画像を変換しました。1件の画像でエラーが発生したため、一覧をご確認ください。'), findsOneWidget);
     // 画面外の行は必要になった時点で描画されるため、結果一覧までスクロールして確認する
     await tester.scrollUntilVisible(
       find.byKey(ValueKey(brokenInput.path)),
@@ -171,8 +171,8 @@ void main() {
     );
     await tester.tap(find.text('元のファイルを上書きする'));
     await tester.pump();
-    await tester.ensureVisible(find.text('圧縮を開始'));
-    await tester.tap(find.text('圧縮を開始'));
+    await tester.ensureVisible(find.text('変換開始'));
+    await tester.tap(find.text('変換開始'));
     await _waitFor(
       tester,
       () => controller.completedCount == 1 && controller.isCompressing == false,

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/logging_service.dart';
 import '../../services/update_check_service.dart';
+import 'app_snack_bar.dart';
 
 /// 利用可能な更新を画面上部に控えめに表示する。
 class UpdateBanner extends StatelessWidget {
@@ -28,9 +29,7 @@ class UpdateBanner extends StatelessWidget {
       final opened = await launchUrl(releaseURI, mode: LaunchMode.externalApplication);
       if (opened == false && context.mounted) {
         final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.releaseOpenFailed)),
-        );
+        showAppSnackBar(context, l10n.releaseOpenFailed, kind: AppNoticeKind.error);
       }
     } catch (error, stackTrace) {
       LoggingService.instance.error(
@@ -39,6 +38,9 @@ class UpdateBanner extends StatelessWidget {
         error: error,
         stackTrace: stackTrace,
       );
+      if (context.mounted) {
+        showAppSnackBar(context, AppLocalizations.of(context).releaseOpenFailed, kind: AppNoticeKind.error);
+      }
     }
   }
 

@@ -3,15 +3,15 @@ import 'image_dimensions.dart';
 /// 画面で選択できる代表的な縦横比。
 enum AspectRatioPreset {
   original,
-  square,
-  ratio3x2,
+  ratio9x16,
   ratio2x3,
-  ratio4x3,
   ratio3x4,
   ratio4x5,
+  square,
   ratio5x4,
+  ratio4x3,
+  ratio3x2,
   ratio16x9,
-  ratio9x16,
   ogp,
 }
 

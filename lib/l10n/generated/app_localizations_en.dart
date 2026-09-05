@@ -18,7 +18,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clearAll => 'Clear all';
 
   @override
-  String get start => 'Start compression';
+  String get start => 'Convert';
 
   @override
   String get settings => 'Settings';
@@ -27,7 +27,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quality => 'Quality';
 
   @override
-  String get ratio => 'Scale';
+  String get ratio => 'Aspect ratio';
 
   @override
   String get removeMetadata => 'Remove metadata such as location data';
@@ -42,23 +42,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get idle => 'Add images to begin';
 
   @override
-  String get emptyDescription =>
-      'Drop JPEG, PNG, or WebP images here, or select them with the button at the top right.';
+  String get emptyDescription => 'Drop JPEG, PNG, or WebP images here, or click to choose files.';
 
   @override
   String get files => 'files';
 
   @override
-  String get about => 'About ImageSquoosher';
+  String get about => 'About';
 
   @override
   String get checkForUpdates => 'Check for updates';
 
   @override
-  String get checkingUpdates => 'Checking for updates…';
+  String get checkingUpdates => 'Checking for updates.';
 
   @override
-  String get upToDate => 'You are up to date';
+  String get upToDate => 'You are up to date.';
 
   @override
   String get updateAvailable => 'A new version is available';
@@ -67,7 +66,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewRelease => 'View release';
 
   @override
-  String get releaseOpenFailed => 'Could not open the release page';
+  String get releaseOpenFailed => 'Could not open the release page.';
 
   @override
   String get dismiss => 'Dismiss';
@@ -118,7 +117,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get compressionUnavailable => 'Compression will start after an image engine is connected';
 
   @override
-  String get clearConfirmation => 'All added images were removed';
+  String get clearConfirmation => 'All images removed from the list. No files were deleted by this action.';
 
   @override
   String get replaceFiles => 'Replace list';
@@ -130,7 +129,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dropImagesDescription => 'You can also choose images with the button above.';
 
   @override
-  String get queueTitle => 'Conversion preview';
+  String get queueTitle => 'Images to convert';
 
   @override
   String get sourceSize => 'Original';
@@ -145,7 +144,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get queued => 'Waiting';
 
   @override
-  String get processing => 'Compressing';
+  String get processing => 'Converting';
 
   @override
   String get completed => 'Completed';
@@ -157,7 +156,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stopped => 'Stopped';
 
   @override
-  String get stop => 'Stop after this image';
+  String get stop => 'Stop';
 
   @override
   String get reset => 'Reset';
@@ -166,34 +165,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openOutput => 'Show in Finder';
 
   @override
-  String get compressionComplete => 'Compression finished';
+  String get compressionComplete => 'Complete';
 
   @override
-  String get compressionStopped => 'Compression stopped';
+  String get compressionStopped => 'Compression stopped.';
 
   @override
-  String get compressionFailed => 'Some images could not be compressed';
+  String get compressionFailed => 'Some images could not be compressed.';
 
   @override
   String get outputSaved => 'Saved';
 
   @override
-  String get filesAdded => 'Images were added to the queue';
+  String get filesAdded => 'Images added. Check your settings when you are ready to convert.';
 
   @override
-  String get duplicateFilesSkipped => 'Duplicate images were skipped';
+  String get duplicateFilesSkipped => 'Duplicate images were skipped.';
 
   @override
-  String get noSupportedImages => 'Choose JPEG, PNG, or WebP images';
+  String get noSupportedImages => 'Choose JPEG, PNG, or WebP images.';
 
   @override
-  String get selectImagesFailed => 'Could not select image files';
+  String get selectImagesFailed => 'Could not select image files.';
 
   @override
-  String get dropFailed => 'Could not add dropped files';
+  String get dropFailed => 'Could not add dropped files.';
 
   @override
-  String get settingsSaved => 'Settings saved';
+  String get settingsSaved => 'Settings saved.';
 
   @override
   String get aboutDescription => 'A desktop app for JPEG compression and resizing.';
@@ -211,24 +210,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get overwriteRestoredOff => 'Overwrite is turned off each time the app starts';
 
   @override
-  String get checkFailed => 'Could not check for updates';
+  String get checkFailed => 'Could not check for updates.';
 
   @override
-  String get statusWaiting => 'Waiting for images';
+  String get statusWaiting => 'Waiting';
 
   @override
   String statusProgress(Object completed, Object total) {
-    return 'Compressing $completed of $total';
+    return '$completed of $total complete';
   }
 
   @override
   String statusCompleted(Object completed, Object failed) {
-    return 'Compression finished: $completed completed, $failed failed';
+    return 'Converted $completed images. Please check the list for $failed images that could not be converted.';
   }
 
   @override
   String dimensionValue(Object width, Object height) {
-    return '$width × $height';
+    return '$width×$height';
   }
 
   @override
@@ -237,10 +236,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get aspectRatio => 'Crop aspect ratio';
+  String get aspectRatio => 'Aspect ratio';
 
   @override
-  String get originalAspectRatio => 'Keep original ratio';
+  String get originalAspectRatio => 'Keep original aspect ratio';
 
   @override
   String get resize => 'Resize';
@@ -267,7 +266,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get finderSyncEnable => 'Enable Finder Sync';
 
   @override
-  String get restoreDefaults => 'Restore defaults';
+  String get restoreDefaults => 'Restore conversion defaults';
 
   @override
   String get customRatio => 'Custom';
@@ -304,4 +303,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get conversionError => 'The image could not be converted';
+
+  @override
+  String conversionSucceeded(int count) {
+    return 'Converted $count images. You can open the files or their folders from the list.';
+  }
+
+  @override
+  String compressionReduction(String percent) {
+    return '$percent% smaller!';
+  }
+
+  @override
+  String sizeIncrease(String percent) {
+    return '$percent% larger';
+  }
+
+  @override
+  String get licenses => 'View licenses';
+
+  @override
+  String get openFileFailed => 'Could not open the file. Please check that it exists in the output folder.';
+
+  @override
+  String get openFolderFailed => 'Could not open the folder. Please check that it still exists.';
+
+  @override
+  String get defaultsRestored => 'Conversion settings restored to their defaults.';
+
+  @override
+  String get conversionFailedStatus => 'Conversion failed';
+
+  @override
+  String get stopping => 'Stopping';
 }

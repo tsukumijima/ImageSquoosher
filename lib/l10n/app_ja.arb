@@ -3,28 +3,28 @@
   "appTitle": "ImageSquoosher",
   "addFiles": "画像を追加",
   "clearAll": "すべて削除",
-  "start": "圧縮を開始",
+  "start": "変換開始",
   "settings": "設定",
   "quality": "画質",
-  "ratio": "比率",
+  "ratio": "アスペクト比",
   "removeMetadata": "位置情報などのメタデータを削除する",
   "suffix": "ファイル名サフィックス",
   "overwrite": "元のファイルを上書きする",
   "idle": "画像を追加してください",
-  "emptyDescription": "JPEG・PNG・WebP をここへドロップするか、右上のボタンから選べます。",
+  "emptyDescription": "JPEG・PNG・WebP をここへドロップするか、クリックして選べます。",
   "files": "ファイル",
-  "about": "ImageSquoosher について",
+  "about": "バージョン情報",
   "checkForUpdates": "更新を確認",
-  "checkingUpdates": "更新を確認中…",
-  "upToDate": "最新版を使用しています",
+  "checkingUpdates": "新しいバージョンを確認しています。",
+  "upToDate": "最新バージョンをご利用いただいています。",
   "updateAvailable": "新しいバージョンが利用できます",
   "viewRelease": "リリースを見る",
-  "releaseOpenFailed": "リリースページを開けませんでした",
+  "releaseOpenFailed": "ページを開けませんでした。時間をおいて、もう一度お試しください。",
   "dismiss": "閉じる",
   "close": "閉じる",
   "save": "保存",
   "cancel": "キャンセル",
-  "language": "表示言語",
+  "language": "言語",
   "japanese": "日本語",
   "english": "English",
   "qualityHint": "低いほどファイルサイズを小さくします",
@@ -34,56 +34,56 @@
   "maxWidth": "最大幅",
   "allowUpscale": "小さい画像を拡大する",
   "overwriteDescription": "変換後の画像で元ファイルを置き換えます",
-  "statusReady": "準備完了",
+  "statusReady": "待機中",
   "compressionUnavailable": "画像変換エンジンの接続後に圧縮を開始できます",
-  "clearConfirmation": "追加した画像をすべて削除しました",
+  "clearConfirmation": "画像をすべて一覧から外しました。この操作でファイルが削除されることはありません。",
   "replaceFiles": "一覧を置き換え",
   "dropImages": "ここへ画像をドロップ",
   "dropImagesDescription": "上のボタンから画像を選ぶこともできます。",
-  "queueTitle": "変換処理プレビュー",
+  "queueTitle": "変換する画像",
   "sourceSize": "元の寸法",
   "outputSize": "出力",
   "outputName": "出力ファイル",
   "queued": "待機中",
-  "processing": "圧縮中",
+  "processing": "変換中",
   "completed": "完了",
   "failed": "失敗",
   "stopped": "停止",
-  "stop": "この画像の後で停止",
+  "stop": "停止",
   "reset": "リセット",
   "openOutput": "Finder で表示",
-  "compressionComplete": "圧縮が完了しました",
-  "compressionStopped": "圧縮を停止しました",
-  "compressionFailed": "一部の画像を圧縮できませんでした",
+  "compressionComplete": "変換完了",
+  "compressionStopped": "変換を停止しました。完了した画像は保存されています。",
+  "compressionFailed": "画像を変換できませんでした。各画像のエラーをご確認ください。",
   "outputSaved": "保存先",
-  "filesAdded": "画像を一覧へ追加しました",
-  "duplicateFilesSkipped": "重複した画像を除外しました",
-  "noSupportedImages": "JPEG・PNG・WebP の画像を選択してください",
-  "selectImagesFailed": "画像ファイルを選択できませんでした",
-  "dropFailed": "ドロップしたファイルを追加できませんでした",
-  "settingsSaved": "設定を保存しました",
+  "filesAdded": "画像を追加しました。設定を確認したら、変換を始められます。",
+  "duplicateFilesSkipped": "選択した画像はすでに一覧に追加されています。",
+  "noSupportedImages": "JPEG・PNG・WebP の画像を選んでください。",
+  "selectImagesFailed": "画像を選択できませんでした。もう一度お試しください。",
+  "dropFailed": "画像を追加できませんでした。もう一度お試しください。",
+  "settingsSaved": "設定を保存しました。",
   "aboutDescription": "JPEG の圧縮とリサイズを行うデスクトップアプリです。",
   "fileSize": "ファイルサイズ",
   "unknownSize": "不明",
   "outputNotCreated": "出力はまだ作成されていません",
   "overwriteRestoredOff": "元ファイルの上書きは起動時にオフへ戻ります",
-  "checkFailed": "更新を確認できませんでした",
-  "statusWaiting": "画像を待っています",
-  "statusProgress": "{total}件中 {completed}件を圧縮中",
+  "checkFailed": "更新を確認できませんでした。時間をおいて、もう一度お試しください。",
+  "statusWaiting": "待機中",
+  "statusProgress": "{total}件中 {completed}件完了",
   "@statusProgress": {
     "placeholders": {
       "completed": {},
       "total": {}
     }
   },
-  "statusCompleted": "圧縮完了：{completed}件成功、{failed}件失敗",
+  "statusCompleted": "{completed}件の画像を変換しました。{failed}件の画像でエラーが発生したため、一覧をご確認ください。",
   "@statusCompleted": {
     "placeholders": {
       "completed": {},
       "failed": {}
     }
   },
-  "dimensionValue": "{width} × {height}",
+  "dimensionValue": "{width}×{height}",
   "@dimensionValue": {
     "placeholders": {
       "width": {},
@@ -96,17 +96,17 @@
       "size": {}
     }
   },
-  "aspectRatio": "切り抜き比率",
-  "originalAspectRatio": "元の比率を保つ",
+  "aspectRatio": "アスペクト比",
+  "originalAspectRatio": "元のアスペクト比を保つ",
   "resize": "リサイズ",
-  "resizeByWidth": "幅を指定",
-  "resizeByHeight": "高さを指定",
+  "resizeByWidth": "横幅を指定",
+  "resizeByHeight": "縦幅を指定",
   "resizePixels": "ピクセル",
   "metadataDescription": "カメラ設定などのメタデータを残す",
   "overwriteWarning": "元のファイルを JPEG で置き換えます",
   "finderSyncManage": "Finder 連携を管理",
   "finderSyncEnable": "Finder 連携を有効化",
-  "restoreDefaults": "既定値へ戻す",
+  "restoreDefaults": "変換設定を既定値に戻す",
   "customRatio": "カスタム",
   "horizontal": "横",
   "vertical": "縦",
@@ -118,5 +118,35 @@
   "invalidImage": "画像を読み取れませんでした",
   "animatedImage": "アニメーション画像には対応していません",
   "unsupportedImage": "JPEG・PNG・WebP の静止画だけを変換できます",
-  "conversionError": "画像を変換できませんでした"
+  "conversionError": "画像を変換できませんでした",
+  "conversionSucceeded": "{count}件の画像を変換できました。ファイルや保存先は一覧から開けます。",
+  "@conversionSucceeded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "compressionReduction": "{percent}% 圧縮!",
+  "@compressionReduction": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sizeIncrease": "{percent}% 増加",
+  "@sizeIncrease": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "licenses": "ライセンスを表示",
+  "openFileFailed": "ファイルを開けませんでした。保存先にファイルがあるかご確認ください。",
+  "openFolderFailed": "保存先を開けませんでした。フォルダがあるかご確認ください。",
+  "defaultsRestored": "変換設定を既定値に戻しました。",
+  "conversionFailedStatus": "変換失敗",
+  "stopping": "停止中"
 }

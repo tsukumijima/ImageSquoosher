@@ -113,7 +113,7 @@ abstract class AppLocalizations {
   /// No description provided for @start.
   ///
   /// In ja, this message translates to:
-  /// **'圧縮を開始'**
+  /// **'変換開始'**
   String get start;
 
   /// No description provided for @settings.
@@ -131,7 +131,7 @@ abstract class AppLocalizations {
   /// No description provided for @ratio.
   ///
   /// In ja, this message translates to:
-  /// **'比率'**
+  /// **'アスペクト比'**
   String get ratio;
 
   /// No description provided for @removeMetadata.
@@ -161,7 +161,7 @@ abstract class AppLocalizations {
   /// No description provided for @emptyDescription.
   ///
   /// In ja, this message translates to:
-  /// **'JPEG・PNG・WebP をここへドロップするか、右上のボタンから選べます。'**
+  /// **'JPEG・PNG・WebP をここへドロップするか、クリックして選べます。'**
   String get emptyDescription;
 
   /// No description provided for @files.
@@ -173,7 +173,7 @@ abstract class AppLocalizations {
   /// No description provided for @about.
   ///
   /// In ja, this message translates to:
-  /// **'ImageSquoosher について'**
+  /// **'バージョン情報'**
   String get about;
 
   /// No description provided for @checkForUpdates.
@@ -185,13 +185,13 @@ abstract class AppLocalizations {
   /// No description provided for @checkingUpdates.
   ///
   /// In ja, this message translates to:
-  /// **'更新を確認中…'**
+  /// **'新しいバージョンを確認しています。'**
   String get checkingUpdates;
 
   /// No description provided for @upToDate.
   ///
   /// In ja, this message translates to:
-  /// **'最新版を使用しています'**
+  /// **'最新バージョンをご利用いただいています。'**
   String get upToDate;
 
   /// No description provided for @updateAvailable.
@@ -209,7 +209,7 @@ abstract class AppLocalizations {
   /// No description provided for @releaseOpenFailed.
   ///
   /// In ja, this message translates to:
-  /// **'リリースページを開けませんでした'**
+  /// **'ページを開けませんでした。時間をおいて、もう一度お試しください。'**
   String get releaseOpenFailed;
 
   /// No description provided for @dismiss.
@@ -239,7 +239,7 @@ abstract class AppLocalizations {
   /// No description provided for @language.
   ///
   /// In ja, this message translates to:
-  /// **'表示言語'**
+  /// **'言語'**
   String get language;
 
   /// No description provided for @japanese.
@@ -299,7 +299,7 @@ abstract class AppLocalizations {
   /// No description provided for @statusReady.
   ///
   /// In ja, this message translates to:
-  /// **'準備完了'**
+  /// **'待機中'**
   String get statusReady;
 
   /// No description provided for @compressionUnavailable.
@@ -311,7 +311,7 @@ abstract class AppLocalizations {
   /// No description provided for @clearConfirmation.
   ///
   /// In ja, this message translates to:
-  /// **'追加した画像をすべて削除しました'**
+  /// **'画像をすべて一覧から外しました。この操作でファイルが削除されることはありません。'**
   String get clearConfirmation;
 
   /// No description provided for @replaceFiles.
@@ -335,7 +335,7 @@ abstract class AppLocalizations {
   /// No description provided for @queueTitle.
   ///
   /// In ja, this message translates to:
-  /// **'変換処理プレビュー'**
+  /// **'変換する画像'**
   String get queueTitle;
 
   /// No description provided for @sourceSize.
@@ -365,7 +365,7 @@ abstract class AppLocalizations {
   /// No description provided for @processing.
   ///
   /// In ja, this message translates to:
-  /// **'圧縮中'**
+  /// **'変換中'**
   String get processing;
 
   /// No description provided for @completed.
@@ -389,7 +389,7 @@ abstract class AppLocalizations {
   /// No description provided for @stop.
   ///
   /// In ja, this message translates to:
-  /// **'この画像の後で停止'**
+  /// **'停止'**
   String get stop;
 
   /// No description provided for @reset.
@@ -407,19 +407,19 @@ abstract class AppLocalizations {
   /// No description provided for @compressionComplete.
   ///
   /// In ja, this message translates to:
-  /// **'圧縮が完了しました'**
+  /// **'変換完了'**
   String get compressionComplete;
 
   /// No description provided for @compressionStopped.
   ///
   /// In ja, this message translates to:
-  /// **'圧縮を停止しました'**
+  /// **'変換を停止しました。完了した画像は保存されています。'**
   String get compressionStopped;
 
   /// No description provided for @compressionFailed.
   ///
   /// In ja, this message translates to:
-  /// **'一部の画像を圧縮できませんでした'**
+  /// **'画像を変換できませんでした。各画像のエラーをご確認ください。'**
   String get compressionFailed;
 
   /// No description provided for @outputSaved.
@@ -431,37 +431,37 @@ abstract class AppLocalizations {
   /// No description provided for @filesAdded.
   ///
   /// In ja, this message translates to:
-  /// **'画像を一覧へ追加しました'**
+  /// **'画像を追加しました。設定を確認したら、変換を始められます。'**
   String get filesAdded;
 
   /// No description provided for @duplicateFilesSkipped.
   ///
   /// In ja, this message translates to:
-  /// **'重複した画像を除外しました'**
+  /// **'選択した画像はすでに一覧に追加されています。'**
   String get duplicateFilesSkipped;
 
   /// No description provided for @noSupportedImages.
   ///
   /// In ja, this message translates to:
-  /// **'JPEG・PNG・WebP の画像を選択してください'**
+  /// **'JPEG・PNG・WebP の画像を選んでください。'**
   String get noSupportedImages;
 
   /// No description provided for @selectImagesFailed.
   ///
   /// In ja, this message translates to:
-  /// **'画像ファイルを選択できませんでした'**
+  /// **'画像を選択できませんでした。もう一度お試しください。'**
   String get selectImagesFailed;
 
   /// No description provided for @dropFailed.
   ///
   /// In ja, this message translates to:
-  /// **'ドロップしたファイルを追加できませんでした'**
+  /// **'画像を追加できませんでした。もう一度お試しください。'**
   String get dropFailed;
 
   /// No description provided for @settingsSaved.
   ///
   /// In ja, this message translates to:
-  /// **'設定を保存しました'**
+  /// **'設定を保存しました。'**
   String get settingsSaved;
 
   /// No description provided for @aboutDescription.
@@ -497,31 +497,31 @@ abstract class AppLocalizations {
   /// No description provided for @checkFailed.
   ///
   /// In ja, this message translates to:
-  /// **'更新を確認できませんでした'**
+  /// **'更新を確認できませんでした。時間をおいて、もう一度お試しください。'**
   String get checkFailed;
 
   /// No description provided for @statusWaiting.
   ///
   /// In ja, this message translates to:
-  /// **'画像を待っています'**
+  /// **'待機中'**
   String get statusWaiting;
 
   /// No description provided for @statusProgress.
   ///
   /// In ja, this message translates to:
-  /// **'{total}件中 {completed}件を圧縮中'**
+  /// **'{total}件中 {completed}件完了'**
   String statusProgress(Object completed, Object total);
 
   /// No description provided for @statusCompleted.
   ///
   /// In ja, this message translates to:
-  /// **'圧縮完了：{completed}件成功、{failed}件失敗'**
+  /// **'{completed}件の画像を変換しました。{failed}件の画像でエラーが発生したため、一覧をご確認ください。'**
   String statusCompleted(Object completed, Object failed);
 
   /// No description provided for @dimensionValue.
   ///
   /// In ja, this message translates to:
-  /// **'{width} × {height}'**
+  /// **'{width}×{height}'**
   String dimensionValue(Object width, Object height);
 
   /// No description provided for @fileSizeValue.
@@ -533,13 +533,13 @@ abstract class AppLocalizations {
   /// No description provided for @aspectRatio.
   ///
   /// In ja, this message translates to:
-  /// **'切り抜き比率'**
+  /// **'アスペクト比'**
   String get aspectRatio;
 
   /// No description provided for @originalAspectRatio.
   ///
   /// In ja, this message translates to:
-  /// **'元の比率を保つ'**
+  /// **'元のアスペクト比を保つ'**
   String get originalAspectRatio;
 
   /// No description provided for @resize.
@@ -551,13 +551,13 @@ abstract class AppLocalizations {
   /// No description provided for @resizeByWidth.
   ///
   /// In ja, this message translates to:
-  /// **'幅を指定'**
+  /// **'横幅を指定'**
   String get resizeByWidth;
 
   /// No description provided for @resizeByHeight.
   ///
   /// In ja, this message translates to:
-  /// **'高さを指定'**
+  /// **'縦幅を指定'**
   String get resizeByHeight;
 
   /// No description provided for @resizePixels.
@@ -593,7 +593,7 @@ abstract class AppLocalizations {
   /// No description provided for @restoreDefaults.
   ///
   /// In ja, this message translates to:
-  /// **'既定値へ戻す'**
+  /// **'変換設定を既定値に戻す'**
   String get restoreDefaults;
 
   /// No description provided for @customRatio.
@@ -667,6 +667,60 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'画像を変換できませんでした'**
   String get conversionError;
+
+  /// No description provided for @conversionSucceeded.
+  ///
+  /// In ja, this message translates to:
+  /// **'{count}件の画像を変換できました。ファイルや保存先は一覧から開けます。'**
+  String conversionSucceeded(int count);
+
+  /// No description provided for @compressionReduction.
+  ///
+  /// In ja, this message translates to:
+  /// **'{percent}% 圧縮!'**
+  String compressionReduction(String percent);
+
+  /// No description provided for @sizeIncrease.
+  ///
+  /// In ja, this message translates to:
+  /// **'{percent}% 増加'**
+  String sizeIncrease(String percent);
+
+  /// No description provided for @licenses.
+  ///
+  /// In ja, this message translates to:
+  /// **'ライセンスを表示'**
+  String get licenses;
+
+  /// No description provided for @openFileFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'ファイルを開けませんでした。保存先にファイルがあるかご確認ください。'**
+  String get openFileFailed;
+
+  /// No description provided for @openFolderFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'保存先を開けませんでした。フォルダがあるかご確認ください。'**
+  String get openFolderFailed;
+
+  /// No description provided for @defaultsRestored.
+  ///
+  /// In ja, this message translates to:
+  /// **'変換設定を既定値に戻しました。'**
+  String get defaultsRestored;
+
+  /// No description provided for @conversionFailedStatus.
+  ///
+  /// In ja, this message translates to:
+  /// **'変換失敗'**
+  String get conversionFailedStatus;
+
+  /// No description provided for @stopping.
+  ///
+  /// In ja, this message translates to:
+  /// **'停止中'**
+  String get stopping;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

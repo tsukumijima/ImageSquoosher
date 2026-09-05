@@ -35,7 +35,6 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
   final _ratioHeightFocusNode = FocusNode();
   final _resizeFocusNode = FocusNode();
   final _suffixFocusNode = FocusNode();
-  bool _hasQualityFocus = false;
 
   @override
   void initState() {
@@ -374,8 +373,8 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
               key: const ValueKey('resize-axis-select'),
               value: settings.resizeAxis,
               items: {
-                ResizeAxis.width: l10n.horizontal,
-                ResizeAxis.height: l10n.vertical,
+                ResizeAxis.width: l10n.resizeByWidth,
+                ResizeAxis.height: l10n.resizeByHeight,
               },
               onChanged: settings.resizeEnabled ? (value) => _updateSettings(resizeAxis: value) : null,
             ),
@@ -445,44 +444,14 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    // デスクトップでは Tab で画質へ移動し、矢印キーで1ずつ調整できるようにする
-                    child: Focus(
+                    // Material のスライダーでマウスとキーボードの両方を扱う
+                    child: Slider(
                       key: const ValueKey('quality-slider-focus'),
-                      onFocusChange: (hasFocus) => setState(() => _hasQualityFocus = hasFocus),
-                      onKeyEvent: (node, event) {
-                        // 押下と長押しの繰り返しを扱い、キーを離した通知は通常の伝播へ戻す
-                        if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-                          return KeyEventResult.ignored;
-                        }
-                        final adjustment = switch (event.logicalKey) {
-                          LogicalKeyboardKey.arrowLeft || LogicalKeyboardKey.arrowDown => -1,
-                          LogicalKeyboardKey.arrowRight || LogicalKeyboardKey.arrowUp => 1,
-                          _ => 0,
-                        };
-                        // Tab などの移動操作は親へ渡し、画質の変更だけをここで処理する
-                        if (adjustment == 0) {
-                          return KeyEventResult.ignored;
-                        }
-                        _updateSettings(quality: (settings.quality + adjustment).clamp(1, 100));
-                        return KeyEventResult.handled;
-                      },
-                      child: DecoratedBox(
-                        // 装飾だけを重ね、フォーカスの有無によらずスライダーの寸法を保つ
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: _hasQualityFocus ? CupertinoTheme.of(context).primaryColor : Colors.transparent,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: CupertinoSlider(
-                          value: settings.quality.toDouble(),
-                          min: 1,
-                          max: 100,
-                          divisions: 99,
-                          onChanged: (value) => _updateSettings(quality: value.round()),
-                        ),
-                      ),
+                      value: settings.quality.toDouble(),
+                      min: 1,
+                      max: 100,
+                      divisions: 99,
+                      onChanged: (value) => _updateSettings(quality: value.round()),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -490,7 +459,7 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                     width: 36,
                     padding: const EdgeInsets.symmetric(vertical: 3),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(7),
                     ),
                     child: Text(
@@ -498,7 +467,7 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontSize: 14,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

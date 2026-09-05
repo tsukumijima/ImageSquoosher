@@ -3,23 +3,23 @@
   "appTitle": "ImageSquoosher",
   "addFiles": "Add images",
   "clearAll": "Clear all",
-  "start": "Start compression",
+  "start": "Convert",
   "settings": "Settings",
   "quality": "Quality",
-  "ratio": "Scale",
+  "ratio": "Aspect ratio",
   "removeMetadata": "Remove metadata such as location data",
   "suffix": "Filename suffix",
   "overwrite": "Overwrite original files",
   "idle": "Add images to begin",
-  "emptyDescription": "Drop JPEG, PNG, or WebP images here, or select them with the button at the top right.",
+  "emptyDescription": "Drop JPEG, PNG, or WebP images here, or click to choose files.",
   "files": "files",
-  "about": "About ImageSquoosher",
+  "about": "About",
   "checkForUpdates": "Check for updates",
-  "checkingUpdates": "Checking for updates…",
-  "upToDate": "You are up to date",
+  "checkingUpdates": "Checking for updates.",
+  "upToDate": "You are up to date.",
   "updateAvailable": "A new version is available",
   "viewRelease": "View release",
-  "releaseOpenFailed": "Could not open the release page",
+  "releaseOpenFailed": "Could not open the release page.",
   "dismiss": "Dismiss",
   "close": "Close",
   "save": "Save",
@@ -36,54 +36,54 @@
   "overwriteDescription": "Replace original images with compressed files",
   "statusReady": "Ready",
   "compressionUnavailable": "Compression will start after an image engine is connected",
-  "clearConfirmation": "All added images were removed",
+  "clearConfirmation": "All images removed from the list. No files were deleted by this action.",
   "replaceFiles": "Replace list",
   "dropImages": "Drop images here",
   "dropImagesDescription": "You can also choose images with the button above.",
-  "queueTitle": "Conversion preview",
+  "queueTitle": "Images to convert",
   "sourceSize": "Original",
   "outputSize": "Output",
   "outputName": "Output file",
   "queued": "Waiting",
-  "processing": "Compressing",
+  "processing": "Converting",
   "completed": "Completed",
   "failed": "Failed",
   "stopped": "Stopped",
-  "stop": "Stop after this image",
+  "stop": "Stop",
   "reset": "Reset",
   "openOutput": "Show in Finder",
-  "compressionComplete": "Compression finished",
-  "compressionStopped": "Compression stopped",
-  "compressionFailed": "Some images could not be compressed",
+  "compressionComplete": "Complete",
+  "compressionStopped": "Compression stopped.",
+  "compressionFailed": "Some images could not be compressed.",
   "outputSaved": "Saved",
-  "filesAdded": "Images were added to the queue",
-  "duplicateFilesSkipped": "Duplicate images were skipped",
-  "noSupportedImages": "Choose JPEG, PNG, or WebP images",
-  "selectImagesFailed": "Could not select image files",
-  "dropFailed": "Could not add dropped files",
-  "settingsSaved": "Settings saved",
+  "filesAdded": "Images added. Check your settings when you are ready to convert.",
+  "duplicateFilesSkipped": "Duplicate images were skipped.",
+  "noSupportedImages": "Choose JPEG, PNG, or WebP images.",
+  "selectImagesFailed": "Could not select image files.",
+  "dropFailed": "Could not add dropped files.",
+  "settingsSaved": "Settings saved.",
   "aboutDescription": "A desktop app for JPEG compression and resizing.",
   "fileSize": "File size",
   "unknownSize": "Unknown",
   "outputNotCreated": "Output has not been created yet",
   "overwriteRestoredOff": "Overwrite is turned off each time the app starts",
-  "checkFailed": "Could not check for updates",
-  "statusWaiting": "Waiting for images",
-  "statusProgress": "Compressing {completed} of {total}",
+  "checkFailed": "Could not check for updates.",
+  "statusWaiting": "Waiting",
+  "statusProgress": "{completed} of {total} complete",
   "@statusProgress": {
     "placeholders": {
       "completed": {},
       "total": {}
     }
   },
-  "statusCompleted": "Compression finished: {completed} completed, {failed} failed",
+  "statusCompleted": "Converted {completed} images. Please check the list for {failed} images that could not be converted.",
   "@statusCompleted": {
     "placeholders": {
       "completed": {},
       "failed": {}
     }
   },
-  "dimensionValue": "{width} × {height}",
+  "dimensionValue": "{width}×{height}",
   "@dimensionValue": {
     "placeholders": {
       "width": {},
@@ -96,8 +96,8 @@
       "size": {}
     }
   },
-  "aspectRatio": "Crop aspect ratio",
-  "originalAspectRatio": "Keep original ratio",
+  "aspectRatio": "Aspect ratio",
+  "originalAspectRatio": "Keep original aspect ratio",
   "resize": "Resize",
   "resizeByWidth": "Resize by width",
   "resizeByHeight": "Resize by height",
@@ -106,7 +106,7 @@
   "overwriteWarning": "The original files are replaced with JPEG files",
   "finderSyncManage": "Manage Finder Sync",
   "finderSyncEnable": "Enable Finder Sync",
-  "restoreDefaults": "Restore defaults",
+  "restoreDefaults": "Restore conversion defaults",
   "customRatio": "Custom",
   "horizontal": "Width",
   "vertical": "Height",
@@ -118,5 +118,35 @@
   "invalidImage": "The image could not be read",
   "animatedImage": "Animated images are not supported",
   "unsupportedImage": "Only still JPEG, PNG, and WebP images can be converted",
-  "conversionError": "The image could not be converted"
+  "conversionError": "The image could not be converted",
+  "conversionSucceeded": "Converted {count} images. You can open the files or their folders from the list.",
+  "@conversionSucceeded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "compressionReduction": "{percent}% smaller!",
+  "@compressionReduction": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sizeIncrease": "{percent}% larger",
+  "@sizeIncrease": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "licenses": "View licenses",
+  "openFileFailed": "Could not open the file. Please check that it exists in the output folder.",
+  "openFolderFailed": "Could not open the folder. Please check that it still exists.",
+  "defaultsRestored": "Conversion settings restored to their defaults.",
+  "conversionFailedStatus": "Conversion failed",
+  "stopping": "Stopping"
 }

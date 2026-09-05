@@ -19,6 +19,7 @@ import '../services/squoosher_controller.dart';
 import '../services/update_check_service.dart';
 import 'theme.dart';
 import 'widgets/compression_footer.dart';
+import 'widgets/app_snack_bar.dart';
 import 'widgets/conversion_settings_panel.dart';
 import 'widgets/empty_drop_area.dart';
 import 'widgets/home_header.dart';
@@ -227,14 +228,19 @@ class HomeScreenState extends State<HomeScreen> {
     } catch (error, stackTrace) {
       LoggingService.instance.error('Failed to select image files.', tag: 'Home', error: error, stackTrace: stackTrace);
       if (mounted) {
-        _showMessage(l10n.selectImagesFailed);
+        _showMessage(l10n.selectImagesFailed, kind: AppNoticeKind.error);
       }
     }
   }
 
   /// 選択画面で選んだ画像を既存のキューへ追加します。
   void _addSelectedFiles(Iterable<String> paths) {
-    final supportedPaths = _supportedPaths(paths);
+    final supportedPaths = _supportedPaths(paths).toList();
+    // 対応形式が含まれていない場合は、選べる形式を案内する
+    if (supportedPaths.isEmpty && paths.isNotEmpty) {
+      _showMessage(AppLocalizations.of(context).noSupportedImages);
+      return;
+    }
     final addedCount = _controller.addFiles(supportedPaths);
     _controller.updateOutputPlans(_preferences.conversionSettings);
     if (addedCount > 0) {
@@ -314,14 +320,23 @@ class HomeScreenState extends State<HomeScreen> {
       await _flushPreferences();
       final isStarted = await _controller.compress(_preferences.conversionSettings);
       if (isStarted == false && mounted) {
-        _showMessage(l10n.statusWaiting);
+        _showMessage(l10n.noSupportedImages);
         return;
       }
       if (mounted) {
         final message = _controller.lastRunWasStopped
             ? l10n.compressionStopped
+            : _controller.failedCount == 0
+            ? l10n.conversionSucceeded(_controller.completedCount)
             : l10n.statusCompleted(_controller.completedCount, _controller.failedCount);
-        _showMessage(message);
+        _showMessage(
+          message,
+          kind: _controller.failedCount > 0
+              ? AppNoticeKind.error
+              : _controller.lastRunWasStopped
+              ? AppNoticeKind.info
+              : AppNoticeKind.success,
+        );
       }
     } catch (error, stackTrace) {
       LoggingService.instance.error(
@@ -331,7 +346,7 @@ class HomeScreenState extends State<HomeScreen> {
         stackTrace: stackTrace,
       );
       if (mounted) {
-        _showMessage(l10n.compressionFailed);
+        _showMessage(l10n.compressionFailed, kind: AppNoticeKind.error);
       }
     }
   }
@@ -373,7 +388,10 @@ class HomeScreenState extends State<HomeScreen> {
       _showUpdateBanner = true;
     });
     if (result.isUpdateAvailable == false) {
-      _showMessage(result.errorMessage == null ? l10n.upToDate : l10n.checkFailed);
+      _showMessage(
+        result.errorMessage == null ? l10n.upToDate : l10n.checkFailed,
+        kind: result.errorMessage == null ? AppNoticeKind.success : AppNoticeKind.error,
+      );
     }
   }
 
@@ -398,15 +416,12 @@ class HomeScreenState extends State<HomeScreen> {
 
   /// 出力先のフォルダを標準ファイルマネージャーで開きます。
   Future<void> _openOutputFolder(QueuedImage queuedImage) async {
-    final outputPath = queuedImage.outputPath;
-    if (outputPath == null) {
-      return;
-    }
+    final outputPath = queuedImage.outputPath ?? queuedImage.path;
     try {
       final directoryUri = Uri.directory(File(outputPath).parent.path);
       final opened = await launchUrl(directoryUri, mode: LaunchMode.externalApplication);
       if (opened == false && mounted) {
-        _showMessage(AppLocalizations.of(context).releaseOpenFailed);
+        _showMessage(AppLocalizations.of(context).openFolderFailed, kind: AppNoticeKind.error);
       }
     } catch (error, stackTrace) {
       LoggingService.instance.warning(
@@ -415,6 +430,7 @@ class HomeScreenState extends State<HomeScreen> {
         error: error,
         stackTrace: stackTrace,
       );
+      if (mounted) _showMessage(AppLocalizations.of(context).openFolderFailed, kind: AppNoticeKind.error);
     }
   }
 
@@ -423,13 +439,18 @@ class HomeScreenState extends State<HomeScreen> {
     if (queuedImage.outputPath == null) {
       return;
     }
-    await launchUrl(Uri.file(queuedImage.outputPath!), mode: LaunchMode.externalApplication);
+    try {
+      final opened = await launchUrl(Uri.file(queuedImage.outputPath!), mode: LaunchMode.externalApplication);
+      if (!opened && mounted) _showMessage(AppLocalizations.of(context).openFileFailed, kind: AppNoticeKind.error);
+    } catch (error) {
+      if (mounted) _showMessage(AppLocalizations.of(context).openFileFailed, kind: AppNoticeKind.error);
+    }
   }
 
   /// 通知を1箇所へ集め、画面が有効な間だけ `ScaffoldMessenger` で表示します。
-  void _showMessage(String message) {
+  void _showMessage(String message, {AppNoticeKind kind = AppNoticeKind.info}) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      showAppSnackBar(context, message, kind: kind);
     }
   }
 
@@ -457,6 +478,9 @@ class HomeScreenState extends State<HomeScreen> {
             top: false,
             child: CompressionFooter(
               completedCount: _controller.completedCount,
+              failedCount: _controller.failedCount,
+              stoppedCount: _controller.stoppedCount,
+              progress: _controller.progress,
               imageCount: _controller.images.length,
               hasValidImages: _controller.hasPendingImages,
               isCompressing: _controller.isCompressing,
@@ -493,7 +517,6 @@ class HomeScreenState extends State<HomeScreen> {
               isCompressing: _controller.isCompressing,
               isFinderSyncEnabled: _isFinderSyncEnabled,
               isFinderIntegrationAvailable: Platform.isMacOS,
-              onAddFiles: _addFiles,
               onFinderSettings: _openFinderSettings,
               onMenuAction: _handleMenuAction,
             ),
@@ -525,6 +548,8 @@ class HomeScreenState extends State<HomeScreen> {
                   ),
                   SliverToBoxAdapter(
                     child: QueueHeader(
+                      canAdd: !_controller.isCompressing,
+                      onAddFiles: _addFiles,
                       imageCount: _controller.images.length,
                       canClear: _controller.images.isNotEmpty && _controller.isCompressing == false,
                       onClear: _clearFiles,
@@ -583,12 +608,44 @@ class HomeScreenState extends State<HomeScreen> {
         _savePreferences(_preferences.copyWith(languageCode: 'en'));
       case HomeMenuAction.restoreDefaults:
         _restoreDefaults();
+        _showMessage(l10n.defaultsRestored, kind: AppNoticeKind.success);
       case HomeMenuAction.about:
-        showAboutDialog(
+        showDialog<void>(
           context: context,
-          applicationName: l10n.appTitle,
-          applicationVersion: _applicationVersion,
-          applicationLegalese: l10n.aboutDescription,
+          builder: (context) => AlertDialog(
+            constraints: const BoxConstraints(maxWidth: 420),
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            title: Row(
+              children: [
+                Image.asset('assets/images/app_icon_1024.png', width: 48, height: 48),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(l10n.appTitle, style: Theme.of(context).textTheme.titleLarge),
+                      Text(_applicationVersion, style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: Text(l10n.aboutDescription, style: Theme.of(context).textTheme.bodyMedium),
+            actions: [
+              TextButton(
+                onPressed: () => showLicensePage(
+                  context: context,
+                  applicationName: l10n.appTitle,
+                  applicationVersion: _applicationVersion,
+                ),
+                child: Text(l10n.licenses),
+              ),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.close)),
+            ],
+          ),
         );
     }
   }
