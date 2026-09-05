@@ -13,8 +13,14 @@ class MainFlutterWindow: NSWindow {
     super.awakeFromNib()
 
     // 通常のドラッグによるサイズ変更を維持し、ウィンドウ操作は手動リサイズへ集約する
-    standardWindowButton(.zoomButton)?.isHidden = true
     collectionBehavior.remove(.fullScreenPrimary)
+  }
+
+  override func makeKeyAndOrderFront(_ sender: Any?) {
+    super.makeKeyAndOrderFront(sender)
+
+    // プラグインによるタイトルバー初期化後も、表示のたびに手動リサイズ専用のボタン配置へ戻す
+    standardWindowButton(.zoomButton)?.isHidden = true
   }
 
   /// マウスポインターがある画面の中央へウィンドウを移動する。
