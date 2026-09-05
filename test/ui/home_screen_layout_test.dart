@@ -190,6 +190,16 @@ List<QueuedImage> _failedImages() {
 }
 
 void main() {
+  test('disabled selected checkboxes use the default disabled colors', () {
+    const accentColor = Color(0xff0a84ff);
+    final checkboxTheme = buildAppTheme(accentColor).checkboxTheme;
+    const disabledSelected = {WidgetState.disabled, WidgetState.selected};
+    expect(checkboxTheme.fillColor?.resolve(disabledSelected), isNull);
+    expect(checkboxTheme.checkColor?.resolve(disabledSelected), isNull);
+    expect(checkboxTheme.fillColor?.resolve({WidgetState.selected}), accentColor);
+    expect(checkboxTheme.checkColor?.resolve({WidgetState.selected}), Colors.white);
+  });
+
   group('HomeScreen layout', () {
     for (final locale in const [Locale('ja'), Locale('en')]) {
       for (final size in const [Size(620, 680), Size(520, 560)]) {
@@ -278,6 +288,55 @@ void main() {
         expect(button.style?.foregroundColor?.resolve(<WidgetState>{}), Colors.white);
       }
     });
+  });
+
+  testWidgets('allow upscaling is disabled with resize and retains its saved value', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(const Color(0xff0a84ff)),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(body: _SettingsPanelHost()),
+      ),
+    );
+    final hostState = tester.state<_SettingsPanelHostState>(find.byType(_SettingsPanelHost));
+    final label = find.text('Allow upscaling');
+    final row = find.ancestor(of: label, matching: find.byType(InkWell)).first;
+    final checkbox = find.descendant(of: row, matching: find.byType(Checkbox));
+    final semantics = find.ancestor(of: row, matching: find.byType(Semantics)).first;
+    final originalBounds = tester.getRect(row);
+
+    // 無効時はチェック本体とラベルの両方を操作対象から外す
+    expect(tester.widget<Checkbox>(checkbox).onChanged, isNull);
+    expect(tester.widget<InkWell>(row).onTap, isNull);
+    expect(tester.widget<Semantics>(semantics).properties.enabled, isFalse);
+    expect(tester.widget<Text>(label).style!.color, Theme.of(tester.element(label)).disabledColor);
+    await tester.tap(label);
+    await tester.tap(checkbox);
+    await tester.pump();
+    expect(hostState._settings.allowUpscale, isTrue);
+
+    // リサイズを有効にすると拡大を選択でき、再度無効にしても選択値と配置を保持する
+    await tester.tap(find.text('Resize'));
+    await tester.pump();
+    expect(tester.widget<Semantics>(semantics).properties.enabled, isTrue);
+    await tester.tap(label);
+    await tester.pump();
+    expect(hostState._settings.allowUpscale, isFalse);
+    await tester.tap(find.text('Resize'));
+    await tester.pump();
+    expect(tester.widget<Checkbox>(checkbox).onChanged, isNull);
+    expect(tester.widget<Checkbox>(checkbox).value, isFalse);
+    expect(tester.getRect(row), originalBounds);
+    await tester.tap(label);
+    await tester.pump();
+    expect(hostState._settings.allowUpscale, isFalse);
+    await tester.tap(find.text('Resize'));
+    await tester.pump();
+    expect(tester.widget<Checkbox>(checkbox).onChanged, isNotNull);
+    expect(tester.widget<Checkbox>(checkbox).value, isFalse);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('settings text controllers keep continuous input across rebuilds', (tester) async {

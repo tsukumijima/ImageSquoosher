@@ -113,10 +113,14 @@ ThemeData buildAppTheme(Color accentColor) {
       ),
     ),
     checkboxTheme: CheckboxThemeData(
+      // 無効時の塗りとチェックマークは Material の既定色で描画する
       fillColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.selected) ? accentColor : null,
+        (states) =>
+            !states.contains(WidgetState.disabled) && states.contains(WidgetState.selected) ? accentColor : null,
       ),
-      checkColor: const WidgetStatePropertyAll(Colors.white),
+      checkColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled) ? null : Colors.white,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
     ),

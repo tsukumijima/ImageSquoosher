@@ -188,12 +188,17 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
   Widget _buildCheckbox({
     required String label,
     required bool value,
-    required ValueChanged<bool?> onChanged,
+    required ValueChanged<bool?>? onChanged,
     bool isExpanded = true,
   }) {
+    // 無効時も配置と保存値を保ち、チェックとラベルを同じ有効状態で表示する
+    final isEnabled = onChanged != null;
+    final labelStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
+      color: isEnabled ? null : Theme.of(context).disabledColor,
+    );
     final content = InkWell(
       borderRadius: BorderRadius.circular(6),
-      onTap: () => onChanged(!value),
+      onTap: onChanged == null ? null : () => onChanged(!value),
       child: SizedBox(
         height: 28,
         child: Row(
@@ -206,15 +211,15 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
             const SizedBox(width: 4),
             if (isExpanded)
               Expanded(
-                child: Text(label, maxLines: 1, softWrap: false, style: Theme.of(context).textTheme.labelMedium),
+                child: Text(label, maxLines: 1, softWrap: false, style: labelStyle),
               )
             else
-              Text(label, maxLines: 1, softWrap: false, style: Theme.of(context).textTheme.labelMedium),
+              Text(label, maxLines: 1, softWrap: false, style: labelStyle),
           ],
         ),
       ),
     );
-    return Semantics(label: label, checked: value, button: true, child: content);
+    return Semantics(label: label, checked: value, enabled: isEnabled, button: true, child: content);
   }
 
   /// 比率のプリセットを選ぶドロップダウンを作ります。
@@ -458,7 +463,7 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                   child: _buildCheckbox(
                     label: l10n.allowUpscale,
                     value: settings.allowUpscale,
-                    onChanged: (value) => _updateSettings(allowUpscale: value),
+                    onChanged: settings.resizeEnabled ? (value) => _updateSettings(allowUpscale: value) : null,
                   ),
                 ),
                 const SizedBox(width: 12),
