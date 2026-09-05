@@ -5,8 +5,8 @@ import XCTest
 class RunnerTests: XCTestCase {
 
   func testExample() {
-    // If you add code to the Runner application, consider adding tests here.
-    // See https://developer.apple.com/documentation/xctest for more information about using XCTest.
+    // Runner アプリへ処理を追加したときは、対応する XCTest をここへ記述する
+    // XCTest の詳細は https://developer.apple.com/documentation/xctest を参照する
   }
 
 }

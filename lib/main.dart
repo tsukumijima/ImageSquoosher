@@ -14,6 +14,7 @@ import 'services/logging_service.dart';
 import 'services/settings_service.dart';
 
 /// デスクトップアプリケーションを起動する。
+/// @returns 初期化とウィンドウ表示が完了する Future
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 

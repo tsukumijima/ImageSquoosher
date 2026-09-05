@@ -207,7 +207,9 @@ void main() {
   });
 }
 
-/// macOS のファイル作成日時を Unix time の秒単位で取得します。
+/// macOS のファイル作成日時を Unix time の秒単位で取得する。
+/// @param file 作成日時を読み取るファイル
+/// @returns Unix time の秒数
 Future<int> _readMacOSCreationTime(File file) async {
   final result = await Process.run('stat', <String>['-f', '%B', file.path]);
   if (result.exitCode != 0) {
@@ -216,7 +218,9 @@ Future<int> _readMacOSCreationTime(File file) async {
   return int.parse((result.stdout as String).trim());
 }
 
-/// 非同期のキュー読み込みと変換完了を、実行環境の速度差を許容して待機します。
+/// 非同期のキュー読み込みと変換完了を、実行環境の速度差を許容して待機する。
+/// @param tester フレームを進めるテスト環境
+/// @param condition 待機対象が完了した状態で true を返す条件
 Future<void> _waitFor(WidgetTester tester, bool Function() condition) async {
   for (var attempt = 0; attempt < 100; attempt += 1) {
     if (condition()) {

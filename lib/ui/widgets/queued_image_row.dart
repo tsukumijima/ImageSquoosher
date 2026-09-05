@@ -12,8 +12,17 @@ import '../../models/image_dimensions.dart';
 import '../../services/squoosher_controller.dart';
 import '../theme.dart';
 
-/// 1枚の画像について、入出力の名前と寸法を固定高さの2行へまとめます。
+/// 1枚の画像について、入出力の名前と寸法を固定高さの2行へまとめる。
 class QueuedImageRow extends StatelessWidget {
+  /// キュー内画像の状態と操作コールバックを受け取って行を構成する。
+  /// @param key ウィジェットを識別するキー
+  /// @param queuedImage 表示対象のキュー画像
+  /// @param settings 現在の変換設定
+  /// @param canRemove 削除操作を有効にするか
+  /// @param onOpenSourceFile 元画像を開くコールバック
+  /// @param onOpenFile 出力画像を開くコールバック
+  /// @param onOpenFolder 出力先フォルダーを開くコールバック
+  /// @param onRemove キューから削除するコールバック
   const QueuedImageRow({
     super.key,
     required this.queuedImage,
@@ -33,7 +42,9 @@ class QueuedImageRow extends StatelessWidget {
   final VoidCallback onOpenFolder;
   final VoidCallback onRemove;
 
-  /// 画像状態に対応する短いラベルを返します。
+  /// 画像状態に対応する短いラベルを返す。
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns 状態に対応する表示ラベル
   String _statusText(AppLocalizations l10n) {
     return switch (queuedImage.status) {
       QueuedImageStatus.queued => l10n.queued,
@@ -44,7 +55,9 @@ class QueuedImageRow extends StatelessWidget {
     };
   }
 
-  /// 待機、進行、成功、失敗、停止を色でも見分けられるようにします。
+  /// 待機、進行、成功、失敗、停止を色でも見分けられるようにする。
+  /// @param colorScheme 状態色の基準となる配色
+  /// @returns 状態に対応する色
   Color _statusColor(ColorScheme colorScheme) {
     return switch (queuedImage.status) {
       QueuedImageStatus.queued => colorScheme.onSurfaceVariant,
@@ -55,7 +68,9 @@ class QueuedImageRow extends StatelessWidget {
     };
   }
 
-  /// 色とアイコンを併用し、待機から完了まで同じ位置で状態を識別できるようにします。
+  /// 色とアイコンを併用し、待機から完了まで同じ位置で状態を識別できるようにする。
+  /// @param context テーマとローカライズ情報を取得する BuildContext
+  /// @returns 状態バッジのウィジェット
   Widget _buildStatusBadge(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isNeutral = queuedImage.status == QueuedImageStatus.queued || queuedImage.status == QueuedImageStatus.stopped;
@@ -86,7 +101,9 @@ class QueuedImageRow extends StatelessWidget {
     );
   }
 
-  /// 代表的な比率と、最大公約数で約分した任意比率を短く表示します。
+  /// 代表的な比率と、最大公約数で約分した任意比率を短く表示する。
+  /// @param dimensions 比率を表示する画像寸法
+  /// @returns 画像比率の表示文字列
   String _aspectRatioText(ImageDimensions dimensions) {
     // 代表的な比率では、リサイズ後の端数を短い表記へ戻す
     for (final preset in image_ratio.AspectRatioPreset.values) {
@@ -100,7 +117,10 @@ class QueuedImageRow extends StatelessWidget {
     return '${dimensions.width ~/ divisor}:${dimensions.height ~/ divisor}';
   }
 
-  /// 実寸法を保ち、出力の1画素以内の丸めは指定した比率として表示します。
+  /// 実寸法を保ち、出力の1画素以内の丸めは指定した比率として表示する。
+  /// @param dimensions 表示する画像寸法
+  /// @param isOutput 出力寸法として設定比率を優先するか
+  /// @returns 寸法と比率の表示文字列
   String _dimensionText(ImageDimensions? dimensions, {bool isOutput = false}) {
     if (dimensions == null) {
       return '—';
@@ -124,7 +144,9 @@ class QueuedImageRow extends StatelessWidget {
     return '$dimensions (${_aspectRatioText(dimensions)})';
   }
 
-  /// 出力予定と生成済み出力を同じ位置で確認できるファイル名を返します。
+  /// 出力予定と生成済み出力を同じ位置で確認できるファイル名を返す。
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns 出力ファイル名または未作成を示す文字列
   String _outputFileName(AppLocalizations l10n) {
     final outputPath = queuedImage.outputPath;
     if (outputPath == null) {
@@ -133,7 +155,9 @@ class QueuedImageRow extends StatelessWidget {
     return File(outputPath).uri.pathSegments.last;
   }
 
-  /// 内部例外の英語表現を、現在の表示言語に対応する短い理由へ置き換えます。
+  /// 内部例外の英語表現を、現在の表示言語に対応する短い理由へ置き換える。
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns 利用者向けのエラー理由
   String _errorText(AppLocalizations l10n) {
     final message = queuedImage.errorMessage ?? '';
     if (message.contains('Animated images')) {
@@ -148,7 +172,10 @@ class QueuedImageRow extends StatelessWidget {
     return l10n.conversionError;
   }
 
-  /// ファイルサイズを画像同士で比較しやすい単位へ整えます。
+  /// ファイルサイズを画像同士で比較しやすい単位へ整える。
+  /// @param byteLength バイト単位のファイルサイズ
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns 比較しやすい単位へ変換したサイズ
   String _formatBytes(int? byteLength, AppLocalizations l10n) {
     if (byteLength == null) {
       return l10n.unknownSize;
@@ -162,7 +189,9 @@ class QueuedImageRow extends StatelessWidget {
     return '${(byteLength / (1024 * 1024)).toStringAsFixed(1)}MB';
   }
 
-  /// 圧縮できた割合と、出力が大きくなった場合の増加率を区別します。
+  /// 圧縮できた割合と、出力が大きくなった場合の増加率を区別する。
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns サイズ変化率の表示文字列
   String _sizeChangeText(AppLocalizations l10n) {
     final inputSize = queuedImage.byteLength;
     final outputSize = queuedImage.outputByteLength;
@@ -175,7 +204,9 @@ class QueuedImageRow extends StatelessWidget {
         : l10n.sizeIncrease((-reduction).toStringAsFixed(0));
   }
 
-  /// 待機中は切り抜き予定を、完了後は保存済みの出力をプレビューします。
+  /// 待機中は切り抜き予定を、完了後は保存済みの出力をプレビューする。
+  /// @param context テーマと表示倍率を取得する BuildContext
+  /// @returns 画像プレビューのウィジェット
   Widget _buildPreview(BuildContext context) {
     final hasCompletedOutput = queuedImage.status == QueuedImageStatus.completed && queuedImage.outputPath != null;
     // 上書きで元入力が削除された後も、出力ファイルとその寸法から結果を表示する
@@ -215,6 +246,9 @@ class QueuedImageRow extends StatelessWidget {
     );
   }
 
+  /// キュー画像の行を構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns キュー画像行のウィジェット
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);

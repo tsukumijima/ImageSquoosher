@@ -1,4 +1,4 @@
-/// アプリケーション設定を JSON ファイルとして永続化するサービス
+/// アプリケーション設定を JSON ファイルとして永続化するサービス。
 library;
 
 import 'dart:convert';
@@ -12,29 +12,39 @@ import 'logging_service.dart';
 
 export '../models/settings.dart' show AppPreferences, SettingsSnapshot, WindowSettings;
 
-/// 変換条件と表示言語の設定ファイル名
+/// 変換条件と表示言語の設定ファイル名。
 const String _preferencesFileName = 'settings.json';
 
-/// ウィンドウ状態の設定ファイル名
+/// ウィンドウ状態の設定ファイル名。
 const String _windowSettingsFileName = 'window_settings.json';
 
 /// Application Support 内でアプリ設定を管理する。
 class SettingsService {
   /// 指定された保存先、または OS の標準保存先を使用する。
+  /// @param directoryOverride 設定を保存するディレクトリの上書き指定
   SettingsService._({Directory? directoryOverride}) : _directoryOverride = directoryOverride;
 
-  /// アプリ全体で共有するシングルトンインスタンス
+  /// アプリ全体で共有するシングルトンインスタンス。
   static final SettingsService instance = SettingsService._();
 
+  /// 設定サービスのログ出力先。
   final LoggingService _log = LoggingService.instance;
+
+  /// 設定保存先の上書き指定。
   final Directory? _directoryOverride;
+
+  /// 確定した設定ディレクトリのパス。
   String? _settingsDirectoryPath;
+
+  /// メモリ上で共有する設定スナップショット。
   SettingsSnapshot? _cachedSnapshot;
 
   /// テスト用の保存先を指定したサービスを作成する。
+  /// @param directory テスト用の設定保存先
   SettingsService.forTesting(Directory directory) : this._(directoryOverride: directory);
 
   /// 設定ディレクトリを作成し、保存先を確定する。
+  /// @returns 初期化処理が完了する Future
   Future<void> initialize() async {
     if (_settingsDirectoryPath != null) {
       return;
@@ -47,6 +57,7 @@ class SettingsService {
   }
 
   /// 変換・表示・ウィンドウ設定を起動時の単一スナップショットとして読み込む。
+  /// @returns アプリ全体で共有する設定スナップショット
   Future<SettingsSnapshot> loadSnapshot() async {
     await initialize();
     if (_cachedSnapshot != null) {
@@ -61,12 +72,16 @@ class SettingsService {
   }
 
   /// UI へスナップショット内の変換条件と表示言語を返す。
+  /// @returns 変換条件と表示言語
   Future<AppPreferences> load() async => (await loadSnapshot()).preferences;
 
   /// スナップショット内のウィンドウ状態を返す。
+  /// @returns ウィンドウ状態
   Future<WindowSettings> loadWindowSettings() async => (await loadSnapshot()).windowSettings;
 
   /// 変換条件と表示言語を保存し、共有スナップショットを更新する。
+  /// @param preferences 保存するアプリケーション設定
+  /// @returns 保存処理が完了する Future
   Future<void> save(AppPreferences preferences) async {
     final snapshot = await loadSnapshot();
     await File(_preferencesPath).writeAsString(const JsonEncoder.withIndent('  ').convert(preferences.toJson()));
@@ -78,6 +93,8 @@ class SettingsService {
   }
 
   /// ウィンドウ状態を専用ファイルへ保存し、共有スナップショットを更新する。
+  /// @param windowSettings 保存するウィンドウ状態
+  /// @returns 保存処理が完了する Future
   Future<void> saveWindowSettings(WindowSettings windowSettings) async {
     final snapshot = await loadSnapshot();
     await File(_windowSettingsPath).writeAsString(const JsonEncoder.withIndent('  ').convert(windowSettings.toJson()));
@@ -94,9 +111,11 @@ class SettingsService {
   }
 
   /// 設定ディレクトリのパスを取得する。
+  /// @returns 設定ディレクトリのパス。初期化前は `null`
   String? get settingsDirectoryPath => _settingsDirectoryPath;
 
   /// 変換条件と表示言語を読み込み、上書き指定を起動ごとに無効化する。
+  /// @returns 読み込んだアプリケーション設定
   Future<AppPreferences> _loadPreferences() async {
     final preferencesFile = File(_preferencesPath);
     if (await preferencesFile.exists() == false) {
@@ -125,6 +144,7 @@ class SettingsService {
   }
 
   /// 保存済みのウィンドウサイズを読み込む。
+  /// @returns 読み込んだウィンドウ状態
   Future<WindowSettings> _loadWindowSettings() async {
     final windowSettingsFile = File(_windowSettingsPath);
     if (await windowSettingsFile.exists() == false) {
@@ -150,6 +170,9 @@ class SettingsService {
   }
 
   /// 既存の変換条件を保ちながら上書き指定だけを変更する。
+  /// @param settings 既存の変換条件
+  /// @param isOverwriteEnabled 更新後の上書き指定
+  /// @returns 上書き指定を更新した変換条件
   static ConversionSettings _withOverwrite(ConversionSettings settings, bool isOverwriteEnabled) {
     return ConversionSettings(
       aspectRatio: settings.aspectRatio,
@@ -165,6 +188,7 @@ class SettingsService {
   }
 
   /// OS ごとのアプリケーションデータ領域から設定ディレクトリを決定する。
+  /// @returns 設定ディレクトリ
   Directory _resolveSettingsDirectory() {
     final String basePath;
     if (Platform.isMacOS) {
@@ -180,12 +204,14 @@ class SettingsService {
   }
 
   /// 変換条件と表示言語の保存先を取得する。
+  /// @returns 設定ファイルのパス
   String get _preferencesPath {
     _ensureInitialized();
     return p.join(_settingsDirectoryPath!, _preferencesFileName);
   }
 
   /// ウィンドウ状態の保存先を取得する。
+  /// @returns ウィンドウ設定ファイルのパス
   String get _windowSettingsPath {
     _ensureInitialized();
     return p.join(_settingsDirectoryPath!, _windowSettingsFileName);

@@ -4,8 +4,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Theme;
 import 'package:flutter/services.dart';
 
-/// デスクトップ向けの小さなポップアップで値を選ぶ Cupertino コントロールです。
+/// デスクトップ向けの小さなポップアップで値を選ぶ Cupertino コントロール。
 class CupertinoSelect<T extends Object> extends StatefulWidget {
+  /// 選択値、候補一覧、変更通知を受け取って選択コントロールを構成する。
+  /// @param key ウィジェットを識別するキー
+  /// @param value 現在選択されている値
+  /// @param items 値と表示ラベルの対応表
+  /// @param onChanged 選択変更時の通知先。null の場合は無効化する
+  /// @param key ウィジェットを識別するキー
   const CupertinoSelect({
     super.key,
     required this.value,
@@ -17,6 +23,8 @@ class CupertinoSelect<T extends Object> extends StatefulWidget {
   final Map<T, String> items;
   final ValueChanged<T>? onChanged;
 
+  /// StatefulWidget の状態を生成する。
+  /// @returns Cupertino 選択コントロールの状態
   @override
   State<CupertinoSelect<T>> createState() => _CupertinoSelectState<T>();
 }
@@ -34,6 +42,9 @@ class _CupertinoSelectState<T extends Object> extends State<CupertinoSelect<T>> 
     super.dispose();
   }
 
+  /// 選択コントロールを構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns 選択コントロールのウィジェット
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onChanged != null;
@@ -158,14 +169,21 @@ class _CupertinoSelectState<T extends Object> extends State<CupertinoSelect<T>> 
   }
 }
 
-/// マウスとキーボードの操作対象をアクセント色で示す選択肢です。
+/// マウスとキーボードの操作対象をアクセント色で示す選択肢。
 class _CupertinoSelectItem extends StatefulWidget {
+  /// 選択肢の表示内容と選択状態を受け取って項目を構成する
+  /// @param label 表示する選択肢のラベル
+  /// @param isSelected 現在選択されている項目か
+  /// @param onPressed 項目が選択されたときのコールバック
+  /// @param key ウィジェットを識別するキー
   const _CupertinoSelectItem({super.key, required this.label, required this.isSelected, required this.onPressed});
 
   final String label;
   final bool isSelected;
   final VoidCallback onPressed;
 
+  /// 選択肢のフォーカス状態を管理するオブジェクトを作成する。
+  /// @returns 選択肢の状態
   @override
   State<_CupertinoSelectItem> createState() => _CupertinoSelectItemState();
 }
@@ -174,12 +192,16 @@ class _CupertinoSelectItemState extends State<_CupertinoSelectItem> {
   final _focusNode = FocusNode();
   bool _hasFocus = false;
 
+  /// 選択肢のフォーカスノードを解放する。
   @override
   void dispose() {
     _focusNode.dispose();
     super.dispose();
   }
 
+  /// 選択肢を構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns 選択肢のウィジェット
   @override
   Widget build(BuildContext context) {
     final isHighlighted = _hasFocus;

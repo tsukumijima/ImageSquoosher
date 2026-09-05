@@ -3,6 +3,7 @@ import FinderSync
 import FlutterMacOS
 
 @main
+/// アプリの起動と Finder の選択受信、ファイル日時の複製を処理する。
 class AppDelegate: FlutterAppDelegate {
   private enum Configuration {
     static let appGroupIdentifier = "Q857TCRGS2.net.tsukumijima.image-squoosher"
@@ -16,6 +17,8 @@ class AppDelegate: FlutterAppDelegate {
   private var pendingSelectedImageURLs: [String] = []
   private var finderSyncChannel: FlutterMethodChannel?
 
+  /// Flutter の起動後に Finder 連携チャネルを登録する。
+  /// - Parameter notification: アプリの起動完了通知
   override func applicationDidFinishLaunching(_ notification: Notification) {
     guard let flutterViewController = mainFlutterWindow?.contentViewController as? FlutterViewController else {
       NSLog("Flutter view controller is unavailable.")
@@ -35,6 +38,9 @@ class AppDelegate: FlutterAppDelegate {
     sendPendingSelectedImageURLs()
   }
 
+  /// 起動 URL から Finder の選択を受け取り、Flutter へ渡す。
+  /// - Parameter application: URL を受け取ったアプリ
+  /// - Parameter urls: OS から渡された起動 URL の一覧
   override func application(_ application: NSApplication, open urls: [URL]) {
     super.application(application, open: urls)
 
@@ -61,15 +67,23 @@ class AppDelegate: FlutterAppDelegate {
     sendPendingSelectedImageURLs()
   }
 
+  /// 最後のウィンドウを閉じたときにアプリも終了する。
+  /// - Parameter sender: 終了条件を問い合わせたアプリ
+  /// - Returns: ウィンドウを閉じた後に終了するための true
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     return true
   }
 
+  /// ウィンドウ状態の安全な復元に対応する。
+  /// - Parameter app: 復元への対応を問い合わせたアプリ
+  /// - Returns: 安全な復元を有効にする true
   override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
     return true
   }
 
   /// Finder Sync の状態確認と選択 URL の受け取りを処理する。
+  /// - Parameter call: Dart からのメソッド名と引数
+  /// - Parameter result: 成功値または FlutterError を返すコールバック
   private func handleFinderSyncMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
     case "isFinderSyncExtensionEnabled":
@@ -97,12 +111,15 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   /// Finder 拡張が使うカスタム URL だけを受け付ける。
+  /// - Parameter url: 起動時に渡された URL
+  /// - Returns: スキームとホストが Finder 選択用の値に一致するかどうか
   private func isFinderSelectionURL(_ url: URL) -> Bool {
     return url.scheme == Configuration.finderSelectionScheme &&
       url.host == Configuration.finderSelectionHost
   }
 
   /// App Group の選択を消費し、通常起動時には空の一覧から開始できるようにする。
+  /// - Returns: 共有領域から取り出したパスの一覧 (未保存なら空の一覧)
   private func takeSelectedImageURLs() -> [String] {
     let defaults = UserDefaults(suiteName: Configuration.appGroupIdentifier)
     let selectedImageURLs = defaults?.stringArray(forKey: Configuration.selectedImageURLsKey) ?? []
@@ -112,6 +129,8 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   /// 元ファイルの作成日時と更新日時を出力ファイルへ複製する。
+  /// - Parameter call: sourcePath と outputPath を含むリクエスト
+  /// - Parameter result: 成功時は nil、失敗時は FlutterError を返すコールバック
   private func copySourceFileDatesToOutputFile(_ call: FlutterMethodCall, result: FlutterResult) {
     guard let arguments = call.arguments as? [String: Any],
           let sourcePath = arguments["sourcePath"] as? String,

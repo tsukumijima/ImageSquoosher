@@ -5,11 +5,19 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 
-/// ヘッダーメニューから親画面へ伝える操作です。
+/// ヘッダーメニューから親画面へ伝える操作。
 enum HomeMenuAction { checkForUpdates, japanese, english, restoreDefaults, about }
 
-/// 画面上端へ主要操作を固定し、補助操作をメニューへまとめます。
+/// 画面上端へ主要操作を固定し、補助操作をメニューへまとめる。
 class HomeHeader extends StatelessWidget {
+  /// ヘッダーの状態と各操作コールバックを受け取って構成する。
+  /// @param key ウィジェットを識別するキー
+  /// @param isCompressing 変換中か
+  /// @param isFinderSyncEnabled Finder Sync が有効か
+  /// @param isFinderIntegrationAvailable Finder Sync 操作を表示できるか
+  /// @param onAddFiles 画像追加時のコールバック
+  /// @param onFinderSettings Finder Sync 設定時のコールバック
+  /// @param onMenuAction メニュー操作の通知先
   const HomeHeader({
     super.key,
     required this.isCompressing,
@@ -34,6 +42,9 @@ class HomeHeader extends StatelessWidget {
     textStyle: WidgetStatePropertyAll(TextStyle(fontSize: 13)),
   );
 
+  /// ヘッダーを構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns ヘッダーのウィジェット
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);

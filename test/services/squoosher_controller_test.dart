@@ -594,7 +594,8 @@ void main() {
   });
 }
 
-/// キュー追加後の非同期詳細読み込みを待ち、テスト終了時まで入力ファイルを保持します。
+/// キュー追加後の非同期詳細読み込みが完了するまで待機する。
+/// @param controller 詳細読み込みを待つコントローラー
 Future<void> _waitForImageDetails(SquoosherController controller) async {
   for (var attempt = 0; attempt < 50; attempt += 1) {
     if (controller.images.every((queuedImage) => queuedImage.sourceDimensions != null)) {
@@ -605,17 +606,25 @@ Future<void> _waitForImageDetails(SquoosherController controller) async {
   throw StateError('Image details were not loaded before the test timed out.');
 }
 
-/// コントローラーの行状態を個別に通知できるテスト用変換器です。
+/// コントローラーの行状態を個別に通知できるテスト用変換器。
 class _ScriptedCompressionEngine implements ImageCompressionEngine {
+  /// 指定した停止コールバックを使って変換器を初期化する。
+  /// @param onFirstItemStarted 1件目の開始直後に呼び出すコールバック
   _ScriptedCompressionEngine({this.onFirstItemStarted});
 
-  /// 1件目の開始直後に停止要求を注入するコールバックです。
+  /// 1件目の開始直後に停止要求を注入するコールバック。
   final void Function()? onFirstItemStarted;
 
-  /// 開始済みとして通知した入力パスを順番に記録します。
+  /// 開始済みとして通知した入力パスを順番に記録する一覧。
   final List<String> startedPaths = <String>[];
 
-  /// テストで指定した順番に完了・失敗・停止をコントローラーへ通知します。
+  /// テストで指定した順番に完了・失敗・停止をコントローラーへ通知する。
+  /// @param request 変換対象の画像と設定
+  /// @param stopToken 停止要求を確認するトークン
+  /// @param onItemStarted 画像ごとの開始通知
+  /// @param onItemCompleted 画像ごとの完了通知
+  /// @param onItemFailed 画像ごとの失敗通知
+  /// @returns 変換結果の集計
   @override
   Future<ImageBatchConversionResult> compress(
     CompressionRequest request, {

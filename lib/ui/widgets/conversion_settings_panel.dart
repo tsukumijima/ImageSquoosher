@@ -11,8 +11,12 @@ import '../../models/conversion_settings.dart';
 import '../../utils/output_name_planner.dart';
 import 'cupertino_select.dart';
 
-/// 画像一覧の表示領域を保ちながら、すべての圧縮設定を直接編集できるパネルです。
+/// 画像一覧の表示領域を保ちながら、すべての圧縮設定を直接編集できるパネル。
 class ConversionSettingsPanel extends StatefulWidget {
+  /// 現在の変換設定と変更通知先を受け取って設定パネルを構成する。
+  /// @param key ウィジェットを識別するキー
+  /// @param settings 現在の変換設定
+  /// @param onChanged 設定変更時の通知先
   const ConversionSettingsPanel({
     super.key,
     required this.settings,
@@ -22,6 +26,8 @@ class ConversionSettingsPanel extends StatefulWidget {
   final ConversionSettings settings;
   final ValueChanged<ConversionSettings> onChanged;
 
+  /// StatefulWidget の状態を生成する。
+  /// @returns 圧縮設定パネルの状態
   @override
   State<ConversionSettingsPanel> createState() => _ConversionSettingsPanelState();
 }
@@ -49,7 +55,7 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     _resizeFocusNode.addListener(_synchronizeNumericFields);
   }
 
-  /// フォーカスを外した数値欄へ実効設定を反映します。
+  /// フォーカスを外した数値欄へ実効設定を反映する。
   void _synchronizeNumericFields() {
     final settings = widget.settings;
     _synchronizeController(
@@ -72,6 +78,8 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
+  /// 新しい設定を受け取り、入力欄の表示を同期する。
+  /// @param oldWidget 更新前の設定パネル
   @override
   void didUpdateWidget(covariant ConversionSettingsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -119,7 +127,12 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     super.dispose();
   }
 
-  /// フォーカス中の中間入力を保ち、外部の設定変更だけを表示値へ反映します。
+  /// フォーカス中の中間入力を保ち、外部の設定変更だけを表示値へ反映する。
+  /// @param controller 表示値を保持する入力コントローラー
+  /// @param focusNode 入力欄のフォーカス状態を管理するノード
+  /// @param previousSavedValue 前回保存された値
+  /// @param savedValue 現在保存されている値
+  /// @param areEquivalent 表記差を同値として扱う比較関数
   void _synchronizeController(
     TextEditingController controller,
     FocusNode focusNode,
@@ -139,23 +152,40 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
-  /// 整数の比率を小数点なしで表示し、小数の比率はそのまま表示します。
+  /// 整数の比率を小数点なしで表示し、小数の比率はそのまま表示する。
+  /// @param value 表示する比率
+  /// @returns 入力欄へ表示する比率文字列
   String _formatRatioValue(double value) {
     // 整数型の上限を超える値も保ち、小数点以下がゼロの表記だけを短くする
     return value.toString().replaceFirst(RegExp(r'\.0$'), '');
   }
 
-  /// 表記が異なっても同じ小数値を表す入力かを判定します。
+  /// 表記が異なっても同じ小数値を表す入力かを判定する。
+  /// @param currentValue 入力欄の現在値
+  /// @param savedValue 保存済みの値
+  /// @returns 2つの値が同じ数値を表す場合は true
   bool _haveEqualDoubleValue(String currentValue, String savedValue) {
     return double.tryParse(currentValue) == double.tryParse(savedValue);
   }
 
-  /// 表記が異なっても同じ整数値を表す入力かを判定します。
+  /// 表記が異なっても同じ整数値を表す入力かを判定する。
+  /// @param currentValue 入力欄の現在値
+  /// @param savedValue 保存済みの値
+  /// @returns 2つの値が同じ整数を表す場合は true
   bool _haveEqualIntValue(String currentValue, String savedValue) {
     return int.tryParse(currentValue) == int.tryParse(savedValue);
   }
 
-  /// 変更された項目以外を保った圧縮設定を親画面へ返します。
+  /// 変更された項目以外を保った圧縮設定を親画面へ返す。
+  /// @param aspectRatio 更新する画像比率
+  /// @param quality 更新する JPEG 品質
+  /// @param resizeEnabled リサイズを有効にするか
+  /// @param resizeAxis 基準にする辺
+  /// @param resizeValue 基準辺の画素数
+  /// @param allowUpscale 拡大を許可するか
+  /// @param stripMetadata メタデータを除去するか
+  /// @param suffix 出力名へ付ける接尾辞
+  /// @param overwrite JPEG 入力を上書きするか
   void _updateSettings({
     image_settings.AspectRatio? aspectRatio,
     int? quality,
@@ -183,7 +213,9 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
-  /// 入力欄の背景と枠をドロップダウンと同じ階調へそろえます。
+  /// 入力欄の背景と枠をドロップダウンと同じ階調へそろえる。
+  /// @param isEnabled 入力欄を有効状態として装飾するか
+  /// @returns 入力欄の背景装飾
   BoxDecoration _textFieldDecoration({bool isEnabled = true}) {
     return BoxDecoration(
       color: Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -192,7 +224,12 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
-  /// ラベルとチェックを一体のクリック対象として、1行の設定項目を作ります。
+  /// ラベルとチェックを一体のクリック対象として、1行の設定項目を作る。
+  /// @param label 設定項目の表示ラベル
+  /// @param value 現在のチェック状態
+  /// @param onChanged 状態変更時の通知先
+  /// @param isExpanded ラベルを残り幅へ広げるか
+  /// @returns チェックボックスとラベルのウィジェット
   Widget _buildCheckbox({
     required String label,
     required bool value,
@@ -231,7 +268,9 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     return Semantics(label: label, checked: value, enabled: isEnabled, button: true, child: content);
   }
 
-  /// 比率のプリセットを選ぶドロップダウンを作ります。
+  /// 比率のプリセットを選ぶドロップダウンを作る。
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns 比率選択のウィジェット
   Widget _buildAspectRatioDropdown(AppLocalizations l10n) {
     final settings = widget.settings;
     return CupertinoSelect<String>(
@@ -259,7 +298,8 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
-  /// カスタム比率の横と縦を同じ行で編集します。
+  /// カスタム比率の横と縦を同じ行で編集する。
+  /// @returns 横と縦の入力欄を含むウィジェット
   Widget _buildCustomRatioFields() {
     final settings = widget.settings;
     return Row(
@@ -319,7 +359,9 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
-  /// 比率選択とカスタム値を固定高の1行へ収めます。
+  /// 比率選択とカスタム値を固定高の1行へ収める。
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns 比率設定のウィジェット
   Widget _buildAspectRatioField(AppLocalizations l10n) {
     final isCustom = widget.settings.aspectRatio.preset == null;
     return SizedBox(
@@ -351,7 +393,9 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
-  /// リサイズの有効状態、基準辺、画素数を1行で編集できるようにします。
+  /// リサイズの有効状態、基準辺、画素数を1行で編集できるようにする。
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns リサイズ設定のウィジェット
   Widget _buildResizeField(AppLocalizations l10n) {
     final settings = widget.settings;
     return SizedBox(
@@ -416,6 +460,9 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
+  /// 設定パネルを構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns 圧縮設定パネルのウィジェット
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);

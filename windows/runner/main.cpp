@@ -13,10 +13,15 @@ constexpr wchar_t kWindowTitle[] = L"ImageSquoosher";
 
 }  // namespace
 
+/// 単一起動を確認し、Flutter ウィンドウのメッセージループを実行する。
+/// @param instance 現在のプロセスのインスタンス (処理には使用しない)
+/// @param prev 以前のインスタンス (Win32 では使用しない)
+/// @param command_line OS が渡すコマンドライン (引数は別途取得する)
+/// @param show_command 表示方法の指定 (ウィンドウ側で表示を制御する)
+/// @returns 正常終了または既存起動への引き継ぎで EXIT_SUCCESS、初期化失敗で EXIT_FAILURE
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
-  // Attach to console when present (e.g., 'flutter run') or create a
-  // new console when running with a debugger.
+  // flutter run のコンソールを引き継ぎ、デバッガーからの起動時は新しく作成する
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
     CreateAndAttachConsole();
   }
@@ -39,8 +44,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     return EXIT_SUCCESS;
   }
 
-  // Initialize COM, so that it is available for use in the library and/or
-  // plugins.
+  // Flutter とプラグインで使う COM を初期化する
   const HRESULT com_initialization_result =
       ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
   if (FAILED(com_initialization_result)) {

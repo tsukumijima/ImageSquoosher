@@ -6,7 +6,9 @@ import 'package:image_squoosher/models/github_release.dart';
 import 'package:image_squoosher/services/update_check_service.dart';
 import 'package:image_squoosher/ui/widgets/update_banner.dart';
 
-/// 指定したリリース URL を持つ更新バナーを構築します。
+/// 指定したリリース URL を持つ更新バナーを構築する。
+/// @param tester ウィジェットを構築するテスト環境
+/// @param releaseURL バナーから開くリリース URL
 Future<void> _pumpUpdateBanner(WidgetTester tester, String releaseURL) async {
   await tester.pumpWidget(
     MaterialApp(

@@ -11,6 +11,7 @@ readonly OUTPUT_DIRECTORY="${PROJECT_ROOT}/native/mozjpeg/macos/arm64"
 WORK_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/image-squoosher-mozjpeg.XXXXXX")"
 readonly WORK_DIRECTORY
 
+# ビルド終了時に一時ソースと中間生成物を解放する
 cleanup() {
   rm -rf "${WORK_DIRECTORY}"
 }

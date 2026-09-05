@@ -20,8 +20,10 @@ import 'package:image_squoosher/ui/widgets/empty_drop_area.dart';
 import 'package:image_squoosher/ui/widgets/queued_image_row.dart';
 import 'package:image_squoosher/ui/widgets/queue_header.dart';
 
-/// 実ファイルの読み取りを待たず、指定した画像状態を画面へ提供するコントローラーです。
+/// 実ファイルの読み取りを待たず、指定した画像状態を画面へ提供するコントローラー。
 class _LayoutTestController extends SquoosherController {
+  /// 指定した画像状態を使ってコントローラーを初期化する。
+  /// @param _testImages 画面へ表示するキュー画像
   _LayoutTestController(this._testImages);
 
   final List<QueuedImage> _testImages;
@@ -43,6 +45,8 @@ class _LayoutTestController extends SquoosherController {
     (image) => image.isInputValid && image.status != QueuedImageStatus.completed,
   );
 
+  /// 指定したパスの画像をテスト用一覧から削除する。
+  /// @param path 削除する画像パス
   @override
   void removeFile(String path) {
     _testImages.removeWhere((image) => image.path == path);
@@ -50,24 +54,32 @@ class _LayoutTestController extends SquoosherController {
   }
 }
 
-/// ディスクアクセスを伴わず、HomeScreen へ既定設定を返すテスト用サービスです。
+/// ディスクアクセスを伴わず、HomeScreen へ既定設定を返すテスト用サービス。
 class _LayoutSettingsService extends SettingsService {
+  /// 一時ディレクトリを使って設定サービスを初期化する。
   _LayoutSettingsService() : super.forTesting(Directory.systemTemp);
 
+  /// ディスクの内容に依存しない既定設定を返す。
+  /// @returns 画面テスト用の既定設定
   @override
   Future<AppPreferences> load() async => const AppPreferences();
 
+  /// 保存する設定を受け取る。
+  /// @param preferences 保存するアプリ設定
   @override
   Future<void> save(AppPreferences preferences) async {}
 }
 
-/// Esc による終了処理で保存された設定を検査するサービスです。
+/// Esc による終了処理で保存された設定を検査するサービス。
 class _RecordingSettingsService extends SettingsService {
+  /// 一時ディレクトリを使って設定サービスを初期化する。
   _RecordingSettingsService() : super.forTesting(Directory.systemTemp);
 
   int saveCount = 0;
   AppPreferences? savedPreferences;
 
+  /// 保存する設定を記録する。
+  /// @param preferences 保存するアプリ設定
   @override
   Future<void> save(AppPreferences preferences) async {
     saveCount += 1;
@@ -75,7 +87,7 @@ class _RecordingSettingsService extends SettingsService {
   }
 }
 
-/// 変換中の終了要求を停止要求へ変換するコントローラーです。
+/// 変換中の終了要求を停止要求へ変換するコントローラー。
 class _ClosingController extends SquoosherController {
   bool didRequestStop = false;
 
@@ -88,12 +100,16 @@ class _ClosingController extends SquoosherController {
   }
 }
 
-/// 選択欄からのキー操作が圧縮開始へ届いた回数を記録します。
+/// 選択欄からのキー操作が圧縮開始へ届いた回数を記録するコントローラー。
 class _StartTrackingController extends _LayoutTestController {
+  /// 通常画像を使って開始回数の記録を初期化する。
   _StartTrackingController() : super(_normalImages());
 
   int startCount = 0;
 
+  /// 変換設定を受け取り、開始回数を記録する。
+  /// @param settings 変換に使う設定
+  /// @returns 変換を開始できたかどうか
   @override
   Future<bool> compress(ConversionSettings settings) async {
     startCount += 1;
@@ -101,10 +117,13 @@ class _StartTrackingController extends _LayoutTestController {
   }
 }
 
-/// 設定変更後の再構築も含めて入力欄を検査するためのホストです。
+/// 設定変更後の再構築も含めて入力欄を検査するためのホスト。
 class _SettingsPanelHost extends StatefulWidget {
+  /// 設定パネルのテスト用ホストを作成する。
   const _SettingsPanelHost();
 
+  /// 設定変更を保持するテスト用の状態を作成する。
+  /// @returns 設定パネルのホスト状態
   @override
   State<_SettingsPanelHost> createState() => _SettingsPanelHostState();
 }
@@ -128,6 +147,9 @@ class _SettingsPanelHostState extends State<_SettingsPanelHost> {
     setState(() {});
   }
 
+  /// 設定パネルを現在の設定で構築する。
+  /// @param context ウィジェットのビルドコンテキスト
+  /// @returns 設定パネル
   @override
   Widget build(BuildContext context) {
     return ConversionSettingsPanel(
@@ -137,7 +159,12 @@ class _SettingsPanelHostState extends State<_SettingsPanelHost> {
   }
 }
 
-/// 画面サイズとロケールを固定し、プラットフォーム機能を外した HomeScreen を構築します。
+/// 画面サイズとロケールを固定し、プラットフォーム機能を外した HomeScreen を構築する。
+/// @param tester ウィジェットを構築するテスト環境
+/// @param size 固定する物理画面サイズ
+/// @param locale 画面へ適用するロケール
+/// @param images 画面へ表示するキュー画像
+/// @param visualDensity 任意の視覚密度
 Future<void> _pumpHomeScreen(
   WidgetTester tester, {
   required Size size,
@@ -183,7 +210,9 @@ Future<void> _pumpHomeScreen(
   await tester.pump(const Duration(milliseconds: 100));
 }
 
-/// 一覧へ表示する通常状態の画像を、実ファイルへ依存しない値で作ります。
+/// 一覧へ表示する通常状態の画像を、実ファイルへ依存しない値で作る。
+/// @param count 作成する画像数
+/// @returns 通常状態のキュー画像
 List<QueuedImage> _normalImages({int count = 3}) {
   return List.generate(
     count,
@@ -197,7 +226,8 @@ List<QueuedImage> _normalImages({int count = 3}) {
   );
 }
 
-/// 失敗理由が加わった画像行を作り、状態表示の追加行も検査対象にします。
+/// 失敗理由が加わった画像行を作り、状態表示の追加行も検査対象にする。
+/// @returns 失敗状態のキュー画像
 List<QueuedImage> _failedImages() {
   return [
     const QueuedImage(

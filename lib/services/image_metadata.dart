@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'image_pipeline_types.dart';
 
+/// JPEG APP2 の ICC プロファイルを識別するヘッダー。
 const _iccProfileHeader = <int>[
   0x49,
   0x43,
@@ -18,12 +19,14 @@ const _iccProfileHeader = <int>[
   0x00,
 ];
 
-/// JPEG に表現できるメタデータ用の APP/COM セグメントです。
+/// JPEG に格納できるメタデータ用の APP/COM セグメント。
 class JpegMetadataSegment {
-  /// JPEG の1セグメントへ保存できるデータ本体の最大バイト数です。
+  /// JPEG の1セグメントへ保存できるデータ本体の最大バイト数。
   static const maximumDataLength = 65533;
 
-  /// セグメントを作成します。
+  /// セグメントを作成する。
+  /// @param marker APPn または COM のマーカー値
+  /// @param data 長さフィールドを除くセグメント本体
   JpegMetadataSegment({required this.marker, required Uint8List data}) : data = Uint8List.fromList(data) {
     if (marker < 0xE0 || marker > 0xFE || marker == 0xDA) {
       throw ArgumentError.value(marker, 'marker', 'Marker must be APPn or COM.');
@@ -37,19 +40,21 @@ class JpegMetadataSegment {
     }
   }
 
-  /// JPEG のマーカー値です。
+  /// JPEG のマーカー値。
   final int marker;
 
-  /// 長さフィールドを除くセグメント本体です。
+  /// 長さフィールドを除くセグメント本体。
   final Uint8List data;
 }
 
-/// JPEG・PNG・WebP の原データから移植可能なメタデータを読み取ります。
-///
-/// ピクセルデコーダーが公開しない XMP、IPTC、コメントを原データから保持します。
-/// 画像の向きは既に画素へ焼き込むため、EXIF の Orientation だけを 1 へ書き換えて出力 JPEG の向きとメタデータを一致させます。
+/// JPEG・PNG・WebP の原データから JPEG へ移植できるメタデータを読み取る処理。
+/// ピクセルデコーダーが公開しない XMP、IPTC、コメントを原データから保持する。
+/// 画像の向きを画素へ焼き込むため、EXIF の Orientation を 1 へ正規化して出力 JPEG の向きと一致させる。
 class ImageMetadataTransfer {
-  /// [format] に応じて JPEG へ移植可能なメタデータを取得します。
+  /// [format] に応じて JPEG へ移植可能なメタデータを取得する。
+  /// @param sourceBytes メタデータを含む原画像のバイト列
+  /// @param format 原画像の形式
+  /// @returns JPEG へ移植するメタデータセグメント
   static List<JpegMetadataSegment> collect(
     Uint8List sourceBytes,
     SourceImageFormat format,
@@ -61,7 +66,10 @@ class ImageMetadataTransfer {
     };
   }
 
-  /// [jpegBytes] の SOI 直後へ [segments] を挿入します。
+  /// [jpegBytes] の SOI 直後へ [segments] を挿入する。
+  /// @param jpegBytes メタデータを追加する JPEG バイト列
+  /// @param segments 追加するメタデータセグメント
+  /// @returns セグメントを追加した JPEG バイト列
   static Uint8List inject(
     Uint8List jpegBytes,
     List<JpegMetadataSegment> segments,
@@ -83,7 +91,9 @@ class ImageMetadataTransfer {
     return builder.toBytes();
   }
 
-  /// JPEG の APP1、APP13、COM セグメントを保ちます。
+  /// JPEG の EXIF、XMP、Photoshop/IPTC、COM セグメントを保持する。
+  /// @param bytes 読み込む JPEG バイト列
+  /// @returns JPEG へ移植するメタデータセグメント
   static List<JpegMetadataSegment> _collectJpeg(Uint8List bytes) {
     if (_isJpeg(bytes) == false) {
       return const <JpegMetadataSegment>[];
@@ -104,7 +114,9 @@ class ImageMetadataTransfer {
     return segments;
   }
 
-  /// JPEG ヘッダーから APP/COM セグメントを読み取ります。
+  /// JPEG ヘッダーから APP/COM セグメントを読み取る。
+  /// @param bytes 読み込む JPEG バイト列
+  /// @returns ヘッダー内のマーカーと本体の組
   static Iterable<({int marker, Uint8List data})> _readJpegHeaderSegments(Uint8List bytes) sync* {
     var offset = 2;
     while (offset + 1 < bytes.lengthInBytes) {
@@ -141,7 +153,9 @@ class ImageMetadataTransfer {
     }
   }
 
-  /// JPEG APP2 の分割 ICC プロファイルを連番どおりに復元します。
+  /// JPEG APP2 の分割 ICC プロファイルを連番どおりに復元する。
+  /// @param bytes 読み込む JPEG バイト列
+  /// @returns 復元した ICC プロファイル (不正または未格納なら null)
   static Uint8List? extractJpegIccProfile(Uint8List bytes) {
     if (_isJpeg(bytes) == false) {
       return null;
@@ -198,7 +212,9 @@ class ImageMetadataTransfer {
     return profile.toBytes();
   }
 
-  /// WebP の ICCP チャンクから色プロファイルを取得します。
+  /// WebP の ICCP チャンクから色プロファイルを取得する。
+  /// @param bytes 読み込む WebP バイト列
+  /// @returns ICC プロファイル (未格納または不正なら null)
   static Uint8List? extractWebPIccProfile(Uint8List bytes) {
     if (_isWebP(bytes) == false) {
       return null;
@@ -211,7 +227,9 @@ class ImageMetadataTransfer {
     return null;
   }
 
-  /// PNG の eXIf、XMP iTXt、Comment tEXt を JPEG セグメントへ変換します。
+  /// PNG の eXIf、XMP iTXt、Comment tEXt を JPEG セグメントへ変換する。
+  /// @param bytes 読み込む PNG バイト列
+  /// @returns JPEG へ移植するメタデータセグメント
   static List<JpegMetadataSegment> _collectPng(Uint8List bytes) {
     if (_isPng(bytes) == false) {
       return const <JpegMetadataSegment>[];
@@ -264,7 +282,9 @@ class ImageMetadataTransfer {
     return segments;
   }
 
-  /// WebP の EXIF と XMP チャンクを JPEG セグメントへ変換します。
+  /// WebP の EXIF と XMP チャンクを JPEG セグメントへ変換する。
+  /// @param bytes 読み込む WebP バイト列
+  /// @returns JPEG へ移植するメタデータセグメント
   static List<JpegMetadataSegment> _collectWebP(Uint8List bytes) {
     if (_isWebP(bytes) == false) {
       return const <JpegMetadataSegment>[];
@@ -289,7 +309,9 @@ class ImageMetadataTransfer {
     return segments;
   }
 
-  /// WebP の RIFF チャンクを宣言順に読み取ります。
+  /// WebP の RIFF チャンクを宣言順に読み取る。
+  /// @param bytes 読み込む WebP バイト列
+  /// @returns チャンクの種類と本体の組
   static Iterable<({String type, Uint8List data})> _readWebPChunks(Uint8List bytes) sync* {
     var offset = 12;
     while (offset + 8 <= bytes.lengthInBytes) {
@@ -306,7 +328,9 @@ class ImageMetadataTransfer {
     }
   }
 
-  /// PNG iTXt の非圧縮 XMP 本文を返します。
+  /// PNG iTXt の非圧縮 XMP 本文を返す。
+  /// @param data iTXt チャンクの本体
+  /// @returns XMP 本文 (対象外または圧縮形式なら null)
   static Uint8List? _extractPngXmp(Uint8List data) {
     final keywordEnd = data.indexOf(0);
     if (keywordEnd <= 0 || keywordEnd + 3 >= data.lengthInBytes) {
@@ -329,7 +353,9 @@ class ImageMetadataTransfer {
     return Uint8List.fromList(data.sublist(translatedKeywordEnd + 1));
   }
 
-  /// PNG tEXt の Comment キーを JPEG COM へ変換します。
+  /// PNG tEXt の Comment キーを JPEG COM へ変換する。
+  /// @param data tEXt チャンクの本体
+  /// @returns コメント本文 (対象外なら null)
   static Uint8List? _extractPngComment(Uint8List data) {
     final keywordEnd = data.indexOf(0);
     if (keywordEnd <= 0) {
@@ -342,7 +368,9 @@ class ImageMetadataTransfer {
     return Uint8List.fromList(data.sublist(keywordEnd + 1));
   }
 
-  /// XMP の標準 APP1 名前空間を付けます。
+  /// XMP の標準 APP1 名前空間を付ける。
+  /// @param xmp XMP 本文
+  /// @returns JPEG APP1 セグメント (サイズ超過なら null)
   static JpegMetadataSegment? _xmpSegment(Uint8List xmp) {
     const xmpHeader = 'http://ns.adobe.com/xap/1.0/\u0000';
     final data = BytesBuilder(copy: false)
@@ -351,7 +379,10 @@ class ImageMetadataTransfer {
     return _createSegmentIfFits(0xE1, data.toBytes());
   }
 
-  /// JPEG の1セグメントへ収まるメタデータだけを変換結果へ移植します。
+  /// JPEG の1セグメントへ収まるメタデータだけをセグメントへ変換する。
+  /// @param marker セグメントのマーカー値
+  /// @param data セグメント本体
+  /// @returns 作成したセグメント (サイズ超過なら null)
   static JpegMetadataSegment? _createSegmentIfFits(int marker, Uint8List data) {
     if (data.lengthInBytes > JpegMetadataSegment.maximumDataLength) {
       return null;
@@ -359,7 +390,9 @@ class ImageMetadataTransfer {
     return JpegMetadataSegment(marker: marker, data: data);
   }
 
-  /// EXIF の IFD0 Orientation を 1 へ変更します。
+  /// EXIF の IFD0 Orientation を 1 へ変更する。
+  /// @param exifData APP1 の EXIF データ
+  /// @returns Orientation を正規化したコピー
   static Uint8List _normalizeExifOrientation(Uint8List exifData) {
     final normalized = Uint8List.fromList(exifData);
     if (_isExifApp1(normalized) == false || normalized.lengthInBytes < 14) {
@@ -393,12 +426,16 @@ class ImageMetadataTransfer {
     return normalized;
   }
 
-  /// JPEG の SOI を検査します。
+  /// JPEG の SOI を検査する。
+  /// @param bytes 検査するバイト列
+  /// @returns SOI で始まる場合は true
   static bool _isJpeg(Uint8List bytes) {
     return bytes.lengthInBytes >= 2 && bytes[0] == 0xFF && bytes[1] == 0xD8;
   }
 
-  /// PNG シグネチャを検査します。
+  /// PNG シグネチャを検査する。
+  /// @param bytes 検査するバイト列
+  /// @returns PNG シグネチャに一致する場合は true
   static bool _isPng(Uint8List bytes) {
     const signature = <int>[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     if (bytes.lengthInBytes < signature.length) {
@@ -412,30 +449,41 @@ class ImageMetadataTransfer {
     return true;
   }
 
-  /// WebP の RIFF/WEBP シグネチャを検査します。
+  /// WebP の RIFF/WEBP シグネチャを検査する。
+  /// @param bytes 検査するバイト列
+  /// @returns WebP シグネチャに一致する場合は true
   static bool _isWebP(Uint8List bytes) {
     return bytes.lengthInBytes >= 12 &&
         ascii.decode(bytes.sublist(0, 4)) == 'RIFF' &&
         ascii.decode(bytes.sublist(8, 12)) == 'WEBP';
   }
 
-  /// JPEG APP1 が EXIF を含むか調べます。
+  /// JPEG APP1 が EXIF を含むか調べる。
+  /// @param data APP1 の本体
+  /// @returns EXIF ヘッダーで始まる場合は true
   static bool _isExifApp1(Uint8List data) {
     const header = <int>[0x45, 0x78, 0x69, 0x66, 0x00, 0x00];
     return _hasPrefix(data, header);
   }
 
-  /// JPEG APP1 が XMP を含むか調べます。
+  /// JPEG APP1 が XMP を含むか調べる。
+  /// @param data APP1 の本体
+  /// @returns XMP ヘッダーで始まる場合は true
   static bool _isXmpApp1(Uint8List data) {
     return _hasPrefix(data, ascii.encode('http://ns.adobe.com/xap/1.0/\u0000'));
   }
 
-  /// JPEG APP13 が Photoshop/IPTC ブロックを含むか調べます。
+  /// JPEG APP13 が Photoshop/IPTC ブロックを含むか調べる。
+  /// @param data APP13 の本体
+  /// @returns Photoshop ヘッダーで始まる場合は true
   static bool _isPhotoshopApp13(Uint8List data) {
     return _hasPrefix(data, ascii.encode('Photoshop 3.0\u0000'));
   }
 
-  /// バイト列が [prefix] で始まるか調べます。
+  /// バイト列が [prefix] で始まるか調べる。
+  /// @param bytes 検査するバイト列
+  /// @param prefix 比較する先頭バイト列
+  /// @returns prefix で始まる場合は true
   static bool _hasPrefix(Uint8List bytes, List<int> prefix) {
     if (bytes.lengthInBytes < prefix.length) {
       return false;
@@ -448,17 +496,27 @@ class ImageMetadataTransfer {
     return true;
   }
 
-  /// ビッグエンディアンの PNG 数値を読みます。
+  /// ビッグエンディアンの PNG 数値を読み取る。
+  /// @param bytes 読み取るバイト列
+  /// @param offset 数値の先頭位置
+  /// @returns 32bit 数値
   static int _readUint32BigEndian(Uint8List bytes, int offset) {
     return (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
   }
 
-  /// リトルエンディアンの RIFF 数値を読みます。
+  /// リトルエンディアンの RIFF 数値を読み取る。
+  /// @param bytes 読み取るバイト列
+  /// @param offset 数値の先頭位置
+  /// @returns 32bit 数値
   static int _readUint32LittleEndian(Uint8List bytes, int offset) {
     return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
   }
 
-  /// TIFF の 16bit 数値を読みます。
+  /// TIFF の 16bit 数値を読み取る。
+  /// @param bytes 読み取るバイト列
+  /// @param offset 数値の先頭位置
+  /// @param isLittleEndian リトルエンディアンで格納されているかどうか
+  /// @returns 16bit 数値
   static int _readTiffUint16(Uint8List bytes, int offset, bool isLittleEndian) {
     if (isLittleEndian) {
       return bytes[offset] | (bytes[offset + 1] << 8);
@@ -466,7 +524,11 @@ class ImageMetadataTransfer {
     return (bytes[offset] << 8) | bytes[offset + 1];
   }
 
-  /// TIFF の 32bit 数値を読みます。
+  /// TIFF の 32bit 数値を読み取る。
+  /// @param bytes 読み取るバイト列
+  /// @param offset 数値の先頭位置
+  /// @param isLittleEndian リトルエンディアンで格納されているかどうか
+  /// @returns 32bit 数値
   static int _readTiffUint32(Uint8List bytes, int offset, bool isLittleEndian) {
     if (isLittleEndian) {
       return _readUint32LittleEndian(bytes, offset);
@@ -474,7 +536,11 @@ class ImageMetadataTransfer {
     return _readUint32BigEndian(bytes, offset);
   }
 
-  /// TIFF の 16bit 数値を書きます。
+  /// TIFF の 16bit 数値を書き込む。
+  /// @param bytes 書き換えるバイト列
+  /// @param offset 数値を書き込む先頭位置
+  /// @param value 書き込む 16bit 数値
+  /// @param isLittleEndian リトルエンディアンで格納するかどうか
   static void _writeTiffUint16(Uint8List bytes, int offset, int value, bool isLittleEndian) {
     if (isLittleEndian) {
       bytes[offset] = value & 0xFF;

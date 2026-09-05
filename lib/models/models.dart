@@ -1,4 +1,4 @@
-/// モデル層のバレルファイル
+/// モデル層のバレルファイル。
 library;
 
 export 'aspect_ratio.dart';

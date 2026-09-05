@@ -13,11 +13,18 @@ import 'package:image_squoosher/services/squoosher_controller.dart';
 import 'package:image_squoosher/ui/home_screen.dart';
 import 'package:image_squoosher/ui/widgets/compression_footer.dart';
 
-/// 完了時刻を固定し、変換中の Finder 通知と停止要求を検査します。
+/// 完了時刻を固定し、変換中の Finder 通知と停止要求を検査する。
 class _ControlledEngine implements ImageCompressionEngine {
   final completion = Completer<void>();
   int startCount = 0;
 
+  /// 指定したリクエストの変換を完了通知まで制御する。
+  /// @param request 変換対象の画像と設定
+  /// @param stopToken 停止要求を確認するトークン
+  /// @param onItemStarted 画像ごとの開始通知
+  /// @param onItemCompleted 画像ごとの完了通知
+  /// @param onItemFailed 画像ごとの失敗通知
+  /// @returns 変換結果の集計
   @override
   Future<ImageBatchConversionResult> compress(
     CompressionRequest request, {
@@ -48,12 +55,17 @@ class _ControlledEngine implements ImageCompressionEngine {
   }
 }
 
-/// 実コントローラーの置換回数を記録し、終了通知の再入による重複を検査します。
+/// 実コントローラーの置換回数を記録し、終了通知の再入による重複を検査するコントローラー。
 class _RecordingController extends SquoosherController {
+  /// 指定した変換エンジンを使ってコントローラーを初期化する。
+  /// @param engine 変換処理を担当するテスト用エンジン
   _RecordingController(ImageCompressionEngine engine) : super(engine: engine);
 
   int replacementCount = 0;
 
+  /// 指定したパスの一覧をコントローラーへ反映する。
+  /// @param paths 反映する画像パス
+  /// @returns 置き換え後の画像件数
   @override
   int replaceFiles(Iterable<String> paths) {
     replacementCount += 1;
@@ -89,7 +101,8 @@ void main() {
     temporaryDirectory.deleteSync(recursive: true);
   });
 
-  /// ネイティブから Dart へ届く選択通知を送信します。
+  /// ネイティブから Dart へ届く選択通知を送信する。
+  /// @param selection Finder で選択された画像パス
   Future<void> sendSelection(List<String> selection) async {
     await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
       channel.name,
@@ -98,7 +111,9 @@ void main() {
     );
   }
 
-  /// Finder の受信ハンドラーを有効にした画面を構築します。
+  /// Finder の受信ハンドラーを有効にした画面を構築する。
+  /// @param tester 画面を構築するテスト環境
+  /// @param controller 画面へ渡すコントローラー
   Future<void> pumpHome(WidgetTester tester, SquoosherController controller) async {
     tester.view.physicalSize = const Size(1200, 1000);
     tester.view.devicePixelRatio = 1;

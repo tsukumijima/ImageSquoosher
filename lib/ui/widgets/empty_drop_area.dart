@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 
-/// 空の画像一覧全体を、クリックとドラッグの追加対象として表示します。
+/// 空の画像一覧全体を、クリックとドラッグの追加対象として表示する。
 class EmptyDropArea extends StatelessWidget {
+  /// ドロップ状態と画像追加コールバックを受け取って空状態を構成する。
+  /// @param key ウィジェットを識別するキー
+  /// @param isDropActive ドロップ対象として強調表示するか
+  /// @param isEnabled 画像追加操作を有効にするか
+  /// @param onAddFiles 画像追加時のコールバック
   const EmptyDropArea({
     super.key,
     required this.isDropActive,
@@ -18,6 +23,9 @@ class EmptyDropArea extends StatelessWidget {
   final bool isEnabled;
   final VoidCallback onAddFiles;
 
+  /// 空状態のドロップ領域を構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns 空状態のドロップ領域
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);

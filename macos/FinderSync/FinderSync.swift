@@ -1,6 +1,7 @@
 import Cocoa
 import FinderSync
 
+/// Finder で選択した対応画像を本体アプリへ渡す。
 final class FinderSync: FIFinderSync {
   private enum Configuration {
     static let appGroupIdentifier = "Q857TCRGS2.net.tsukumijima.image-squoosher"
@@ -18,6 +19,7 @@ final class FinderSync: FIFinderSync {
   // Finder 上の選択を本体アプリへ渡すため、両方のターゲットで共有する領域を使う
   private let sharedDefaults = UserDefaults(suiteName: Configuration.appGroupIdentifier)
 
+  /// ローカルと外付けボリュームを含む Finder の監視を開始する。
   override init() {
     super.init()
 
@@ -26,6 +28,9 @@ final class FinderSync: FIFinderSync {
     NSLog("Finder Sync extension initialized.")
   }
 
+  /// 対応画像の右クリック時に本体アプリを開くメニューを作る。
+  /// - Parameter menuKind: Finder が表示するメニューの種類
+  /// - Returns: 対応画像の操作メニュー (対象外なら nil)
   override func menu(for menuKind: FIMenuKind) -> NSMenu? {
     // Finder のツールバーやフォルダ背景へ項目を足さず、ファイルの右クリックだけを拡張する
     guard menuKind == .contextualMenuForItems,
@@ -45,6 +50,8 @@ final class FinderSync: FIFinderSync {
     return menu
   }
 
+  /// 選択画像を共有領域へ保存し、本体アプリを起動する。
+  /// - Parameter sender: 操作元のメニュー項目 (処理には使用しない)
   @IBAction private func openImageSquoosher(_ sender: Any?) {
     let selectedImageURLs = supportedImageURLs(
       from: FIFinderSyncController.default().selectedItemURLs()
@@ -74,7 +81,9 @@ final class FinderSync: FIFinderSync {
     }
   }
 
-  /// App Group を使えない Debug 署名では、選択パスを起動 URL の query へ載せる。
+  /// Debug では選択パスをクエリにも含め、本体を起動する URL を作る。
+  /// - Parameter selectedImageURLs: 本体へ渡す画像の URL 一覧
+  /// - Returns: カスタムスキームの起動 URL (構築に失敗した場合は nil)
   private func applicationURL(for selectedImageURLs: [URL]) -> URL? {
     #if DEBUG
     guard var components = URLComponents(string: Configuration.applicationURL) else {
@@ -88,6 +97,8 @@ final class FinderSync: FIFinderSync {
   }
 
   /// Finder の選択から画像として処理できる URL だけを取り出す。
+  /// - Parameter urls: Finder の選択 URL (選択がなければ nil)
+  /// - Returns: 対応する拡張子を持つ URL の一覧
   private func supportedImageURLs(from urls: [URL]?) -> [URL] {
     return (urls ?? []).filter { url in
       Configuration.supportedImageExtensions.contains(url.pathExtension.lowercased())

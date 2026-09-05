@@ -816,6 +816,10 @@ void main() {
   });
 }
 
+/// JPEG の EXIF Orientation セグメントを SOI 直後へ追加する。
+/// @param jpegBytes 元の JPEG バイト列
+/// @param orientation 埋め込む EXIF Orientation 値
+/// @returns Orientation を含む JPEG バイト列
 Uint8List _jpegWithOrientation(Uint8List jpegBytes, int orientation) {
   final exifData = <int>[
     0x45,
@@ -863,7 +867,11 @@ Uint8List _jpegWithOrientation(Uint8List jpegBytes, int orientation) {
   ]);
 }
 
-/// テスト用の変換指定を作成します。
+/// テスト用の変換指定を作成する。
+/// @param inputFile 入力ファイル
+/// @param outputFile 出力ファイル
+/// @param cjpegExecutable 使用する cjpeg 実行ファイル
+/// @returns 変換リクエスト
 ImageConversionRequest _conversionRequest(File inputFile, File outputFile, File cjpegExecutable) {
   return ImageConversionRequest(
     inputFile: inputFile,
@@ -873,7 +881,15 @@ ImageConversionRequest _conversionRequest(File inputFile, File outputFile, File 
   );
 }
 
-/// 指定した 8bit RGB の PPM を実際の `cjpeg` で圧縮します。
+/// 指定した 8bit RGB の PPM を実際の `cjpeg` で圧縮する。
+/// @param cjpegExecutable 使用する cjpeg 実行ファイル
+/// @param temporaryDirectory 中間ファイルを置くディレクトリ
+/// @param fileName 中間ファイルの基底名
+/// @param width PPM の幅
+/// @param height PPM の高さ
+/// @param rgbBytes RGB の画素データ
+/// @param quality JPEG 品質
+/// @returns 圧縮後の JPEG バイト列
 Future<Uint8List> _encodePpmWithCjpeg({
   required File cjpegExecutable,
   required Directory temporaryDirectory,
@@ -904,7 +920,9 @@ Future<Uint8List> _encodePpmWithCjpeg({
   return outputFile.readAsBytes();
 }
 
-/// EXIF、GPS、XMP、IPTC、コメントを含む実 JPEG ヘッダーを追加します。
+/// EXIF、GPS、XMP、IPTC、コメントを含む実 JPEG ヘッダーを追加する。
+/// @param jpegBytes 元の JPEG バイト列
+/// @returns メタデータを追加した JPEG バイト列
 Uint8List _jpegWithMetadata(Uint8List jpegBytes) {
   return _injectJpegSegments(jpegBytes, <({int marker, Uint8List data})>[
     (marker: 0xE1, data: Uint8List.fromList(_exifWithGps())),
@@ -917,7 +935,8 @@ Uint8List _jpegWithMetadata(Uint8List jpegBytes) {
   ]);
 }
 
-/// EXIF の IFD0 から GPS IFD を参照する最小の TIFF データを作成します。
+/// EXIF の IFD0 から GPS IFD を参照する最小の TIFF データを作成する。
+/// @returns GPS IFD を含む TIFF データ
 List<int> _exifWithGps() {
   return <int>[
     ..._exifHeader,
@@ -966,7 +985,10 @@ List<int> _exifWithGps() {
   ];
 }
 
-/// JPEG の SOI 直後へ任意の APP/COM セグメントを挿入します。
+/// JPEG の SOI 直後へ任意の APP/COM セグメントを挿入する。
+/// @param jpegBytes 元の JPEG バイト列
+/// @param segments 挿入するセグメント
+/// @returns セグメントを挿入した JPEG バイト列
 Uint8List _injectJpegSegments(Uint8List jpegBytes, List<({int marker, Uint8List data})> segments) {
   final output = BytesBuilder(copy: false)..add(jpegBytes.sublist(0, 2));
   for (final segment in segments) {
@@ -978,7 +1000,9 @@ Uint8List _injectJpegSegments(Uint8List jpegBytes, List<({int marker, Uint8List 
   return output.toBytes();
 }
 
-/// JPEG ヘッダーに含まれる APP/COM セグメントを走査します。
+/// JPEG ヘッダーに含まれる APP/COM セグメントを走査する。
+/// @param bytes 走査する JPEG バイト列
+/// @returns ヘッダーから抽出したセグメント
 List<({int marker, Uint8List data})> _jpegHeaderSegments(Uint8List bytes) {
   final segments = <({int marker, Uint8List data})>[];
   var offset = 2;
@@ -1012,7 +1036,9 @@ List<({int marker, Uint8List data})> _jpegHeaderSegments(Uint8List bytes) {
   return segments;
 }
 
-/// `cjpeg` が出力した分割済み APP2 セグメントから ICC プロファイルを復元します。
+/// `cjpeg` が出力した分割済み APP2 セグメントから ICC プロファイルを復元する。
+/// @param jpegBytes 走査する JPEG バイト列
+/// @returns 復元した ICC プロファイル
 Uint8List _iccProfileFromJpeg(Uint8List jpegBytes) {
   final segments =
       _jpegHeaderSegments(
@@ -1026,7 +1052,10 @@ Uint8List _iccProfileFromJpeg(Uint8List jpegBytes) {
   return profile.toBytes();
 }
 
-/// ICC プロファイルを JPEG APP2 の連番付き断片へ分割して挿入します。
+/// ICC プロファイルを JPEG APP2 の連番付き断片へ分割して挿入する。
+/// @param jpegBytes 元の JPEG バイト列
+/// @param profileBytes 挿入する ICC プロファイル
+/// @returns ICC プロファイルを含む JPEG バイト列
 Uint8List _jpegWithIccProfile(Uint8List jpegBytes, Uint8List profileBytes) {
   final fragmentPayloadLength = JpegMetadataSegment.maximumDataLength - _iccHeader.length - 2;
   final fragmentCount = (profileBytes.length + fragmentPayloadLength - 1) ~/ fragmentPayloadLength;
@@ -1044,14 +1073,20 @@ Uint8List _jpegWithIccProfile(Uint8List jpegBytes, Uint8List profileBytes) {
   return ImageMetadataTransfer.inject(jpegBytes, segments);
 }
 
-/// `img2webp` で作成した2フレームの最小 WebP fixture を返します。
+/// `img2webp` で作成した2フレームの最小 WebP テストデータを返す。
+/// @returns 2フレームの WebP バイト列
 Uint8List _animatedWebP() {
   return base64Decode(
     'UklGRoQAAABXRUJQVlA4WAoAAAACAAAAAQAAAQAAQU5JTQYAAAD/////AABBTk1GKAAAAAAAAAAAAAEAAAEAAGQAAAJWUDhMDwAAAC8BQAAABxDlj/4HIqL/AQBBTk1GKAAAAAAAAAAAAAEAAAEAAGQAAABWUDhMDwAAAC8BQAAABxDR/v4HIqL/AQA=',
   );
 }
 
-/// 静止 WebP を ICCP 付きの拡張 WebP へ組み替えます。
+/// 静止 WebP を ICCP 付きの拡張 WebP へ組み替える。
+/// @param webP 元の WebP バイト列
+/// @param profile 挿入する ICC プロファイル
+/// @param width WebP の幅
+/// @param height WebP の高さ
+/// @returns ICCP チャンクを含む WebP バイト列
 Uint8List _webPWithIccProfile(
   Uint8List webP,
   Uint8List profile, {
@@ -1083,7 +1118,10 @@ Uint8List _webPWithIccProfile(
   ]);
 }
 
-/// WebP の RIFF チャンクを偶数バイト境界へ揃えて返します。
+/// WebP の RIFF チャンクを偶数バイト境界へ揃えて返す。
+/// @param type チャンク種別
+/// @param data チャンクデータ
+/// @returns RIFF チャンクのバイト列
 List<int> _webPChunk(String type, Uint8List data) {
   return <int>[
     ...ascii.encode(type),
@@ -1093,12 +1131,18 @@ List<int> _webPChunk(String type, Uint8List data) {
   ];
 }
 
+/// 整数を3バイトのリトルエンディアンへ変換する。
+/// @param value 変換する整数
+/// @returns 3バイトのリトルエンディアン表現
 List<int> _uint24LittleEndian(int value) => <int>[
   value & 0xFF,
   (value >> 8) & 0xFF,
   (value >> 16) & 0xFF,
 ];
 
+/// 整数を4バイトのリトルエンディアンへ変換する。
+/// @param value 変換する整数
+/// @returns 4バイトのリトルエンディアン表現
 List<int> _uint32LittleEndian(int value) => <int>[
   value & 0xFF,
   (value >> 8) & 0xFF,
@@ -1106,7 +1150,10 @@ List<int> _uint32LittleEndian(int value) => <int>[
   (value >> 24) & 0xFF,
 ];
 
-/// バイト列が指定ヘッダーで始まるか調べます。
+/// バイト列が指定ヘッダーで始まるか調べる。
+/// @param bytes 検査するバイト列
+/// @param header 先頭と比較するヘッダー
+/// @returns ヘッダーが一致するとき true
 bool _hasPrefix(Uint8List bytes, List<int> header) {
   if (bytes.lengthInBytes < header.length) {
     return false;
@@ -1119,7 +1166,8 @@ bool _hasPrefix(Uint8List bytes, List<int> header) {
   return true;
 }
 
-/// Orientation ごとの差が分かる3列2行の色パターンを作成します。
+/// Orientation ごとの差が分かる3列2行の色パターンを作成する。
+/// @returns Orientation 検証用の画像
 image.Image _orientationPatternImage() {
   const cellSize = 24;
   final source = image.Image(width: cellSize * 3, height: cellSize * 2);
@@ -1136,7 +1184,9 @@ image.Image _orientationPatternImage() {
   return source;
 }
 
-/// EXIF Orientation ごとの焼き込み後の色配置を返します。
+/// EXIF Orientation ごとの焼き込み後の色配置を返す。
+/// @param orientation 検証する EXIF Orientation 値
+/// @returns 変換後に期待する色名の行列
 List<List<String>> _orientationColorGrid(int orientation) {
   return switch (orientation) {
     1 => const <List<String>>[
@@ -1179,7 +1229,11 @@ List<List<String>> _orientationColorGrid(int orientation) {
   };
 }
 
-/// 圧縮後の RGB 値に最も近いテスト用の色名を返します。
+/// 圧縮後の RGB 値に最も近いテスト用の色名を返す。
+/// @param red 赤成分
+/// @param green 緑成分
+/// @param blue 青成分
+/// @returns 最も近い色名
 String _closestOrientationColor(int red, int green, int blue) {
   var closestName = '';
   var closestDistance = double.infinity;

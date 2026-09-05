@@ -6,6 +6,16 @@ enum ResizeAxis { width, height }
 
 /// 画像変換画面で指定する設定値。
 class ConversionSettings {
+  /// 指定した変換条件を作成する。
+  /// @param aspectRatio クロップに使う縦横比
+  /// @param quality JPEG の品質値
+  /// @param resizeEnabled リサイズを行うかどうか
+  /// @param resizeAxis 基準にする辺
+  /// @param resizeValue 基準にする辺の長さ
+  /// @param allowUpscale 元画像より拡大するかどうか
+  /// @param stripMetadata メタデータを除去するかどうか
+  /// @param suffix 出力ファイル名へ付けるサフィックス
+  /// @param overwrite JPEG の入力元を上書きするかどうか
   const ConversionSettings({
     this.aspectRatio = const AspectRatio.preset(AspectRatioPreset.original),
     this.quality = 90,
@@ -19,18 +29,40 @@ class ConversionSettings {
   }) : assert(quality >= 1 && quality <= 100),
        assert(resizeValue > 0);
 
+  /// クロップに使う縦横比。
   final AspectRatio aspectRatio;
+
+  /// JPEG の品質値。
   final int quality;
+
+  /// リサイズを行うかどうか。
   final bool resizeEnabled;
+
+  /// リサイズの基準にする辺。
   final ResizeAxis resizeAxis;
+
+  /// 基準にする辺の長さ。
   final int resizeValue;
+
+  /// 元画像より拡大するかどうか。
   final bool allowUpscale;
+
+  /// メタデータを除去するかどうか。
   final bool stripMetadata;
+
+  /// 出力ファイル名へ付けるサフィックス。
   final String suffix;
+
+  /// JPEG の入力元を上書きするかどうか。
   final bool overwrite;
+
+  /// 拡大を禁止する設定かどうかを返す。
+  /// @returns 拡大を禁止する場合は `true`
   bool get preventUpscale => !allowUpscale;
 
   /// 元画像に適用する中央クロップと出力寸法を計算する。
+  /// @param source 入力画像の寸法
+  /// @returns クロップ領域と出力寸法を含む計画
   ImageSizePlan plan(ImageDimensions source) {
     final requestedRatio = aspectRatio.resolve(source);
     final crop = calculateCenterCrop(source, requestedRatio);
@@ -48,6 +80,9 @@ class ConversionSettings {
 }
 
 /// 指定縦横比に収まる中央クロップ領域を計算する。
+/// @param source 入力画像の寸法
+/// @param targetAspectRatio 収める縦横比
+/// @returns 入力画像の中央に配置したクロップ領域
 CropRect calculateCenterCrop(ImageDimensions source, double targetAspectRatio) {
   if (targetAspectRatio <= 0) {
     throw ArgumentError.value(targetAspectRatio, 'targetAspectRatio');
@@ -90,6 +125,12 @@ CropRect calculateCenterCrop(ImageDimensions source, double targetAspectRatio) {
 
 /// 幅または高さを基準に比率を保った出力寸法を計算する。
 /// [targetAspectRatio] を指定すると、クロップの整数丸め前の比率を出力へ適用する。
+/// @param source リサイズ対象の寸法
+/// @param targetWidth 出力幅。高さだけを指定する場合は `null`
+/// @param targetHeight 出力高さ。幅だけを指定する場合は `null`
+/// @param targetAspectRatio 出力へ適用する縦横比
+/// @param preventUpscale 元画像を超える拡大を禁止するかどうか
+/// @returns 計算した出力寸法
 ImageDimensions calculateOutputDimensions(
   ImageDimensions source, {
   int? targetWidth,

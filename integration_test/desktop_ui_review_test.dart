@@ -199,7 +199,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsOneWidget);
       await _capture(tester, captureKey, screenshots, 'ui-about');
-      // Dialog の外側には画面全幅の配置領域があるため、背景を描く Material の寸法を測る
+      // ダイアログの外側には画面全幅の配置領域があるため、背景を描く Material の寸法を測る
       final dialogSurface = find.descendant(
         of: find.byType(AlertDialog),
         matching: find.byWidgetPredicate((widget) => widget is Material && widget.type == MaterialType.card),
@@ -255,7 +255,9 @@ void main() {
   );
 }
 
-/// 実際の処理を待ちつつフレームを送り、低速な Debug 変換にも時間を確保します。
+/// 実際の処理を待ちつつフレームを送り、低速な Debug 変換にも時間を確保する。
+/// @param tester フレームを進めるテスト環境
+/// @param condition 待機対象が完了した状態で true を返す条件
 Future<void> _waitFor(WidgetTester tester, bool Function() condition) async {
   final timer = Stopwatch()..start();
   while (!condition()) {
@@ -266,7 +268,11 @@ Future<void> _waitFor(WidgetTester tester, bool Function() condition) async {
   }
 }
 
-/// ダイアログと通知を含む実レンダーを保存し、目視でレイアウトを確認できるようにします。
+/// ダイアログと通知を含む実レンダーを保存し、目視でレイアウトを確認できるようにする。
+/// @param tester レンダリングを進めるテスト環境
+/// @param key 撮影対象の RepaintBoundary を参照するキー
+/// @param directory PNG を保存するディレクトリ
+/// @param stage 保存ファイル名に使う画面状態名
 Future<void> _capture(WidgetTester tester, GlobalKey key, Directory directory, String stage) async {
   debugPrint('UI capture $stage: preparing frame.');
   await tester.pump().timeout(const Duration(seconds: 10));

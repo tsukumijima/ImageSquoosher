@@ -1,5 +1,10 @@
 /// 画像変換の出力先と上書き状態を表す計画。
 class OutputFilePlan {
+  /// 出力計画を作成する。
+  /// @param inputPath 変換元のパス
+  /// @param outputPath 生成する JPEG のパス
+  /// @param isOverwrite 入力を置き換える計画かどうか
+  /// @param sequenceNumber Finder 形式の連番 (連番がなければ null)
   const OutputFilePlan({
     required this.inputPath,
     required this.outputPath,
@@ -7,13 +12,24 @@ class OutputFilePlan {
     required this.sequenceNumber,
   });
 
+  /// 変換元のパス。
   final String inputPath;
+
+  /// 生成する JPEG のパス。
   final String outputPath;
+
+  /// 入力を置き換える計画かどうか。
   final bool isOverwrite;
+
+  /// Finder 形式の連番。連番がなければ null。
   final int? sequenceNumber;
 
+  /// 入力ファイル自身を置き換える計画かどうか。
   bool get overwritesInput => isOverwrite;
 
+  /// 計画の内容が一致するか判定する。
+  /// @param other 比較対象のオブジェクト
+  /// @returns すべての計画項目が同じ場合は true
   @override
   bool operator ==(Object other) {
     return other is OutputFilePlan &&
@@ -23,18 +39,22 @@ class OutputFilePlan {
         other.sequenceNumber == sequenceNumber;
   }
 
+  /// 計画の内容からハッシュ値を生成する。
+  /// @returns すべての計画項目に基づくハッシュ値
   @override
   int get hashCode => Object.hash(inputPath, outputPath, isOverwrite, sequenceNumber);
 }
 
 /// 画像の出力ファイル名を決める純粋な命名処理。
 class OutputNamePlanner {
+  /// インスタンス化を禁止するための非公開コンストラクター。
   const OutputNamePlanner._();
 
   /// 同じフォルダのファイル名へ連結できるサフィックスか判定する。
-  ///
-  /// 空文字列は許可する。
-  /// パス区切り文字、NUL、制御文字、Windows で予約された文字を含む値と、単独で相対パスの構成要素になる値を無効と判定し、出力先を入力と同じフォルダのファイル名に限定する。
+  /// 空文字列を許可し、出力先を入力と同じフォルダのファイル名に限定する。
+  /// パス区切り文字、NUL、制御文字、Windows の予約文字と、相対パスの構成要素になる値を無効と判定する。
+  /// @param suffix 検査するファイル名サフィックス
+  /// @returns サフィックスをファイル名の一部として使える場合は true
   static bool isValidSuffix(String suffix) {
     if (suffix == '.' || suffix == '..') {
       return false;
@@ -51,6 +71,12 @@ class OutputNamePlanner {
   }
 
   /// 入力名、既存名、サフィックスから上書き対象または空き名を決める。
+  /// @param inputPath 変換元のパス
+  /// @param existingPaths 既に存在するパスの一覧
+  /// @param suffix 出力ベース名へ付けるサフィックス
+  /// @param overwrite 入力の置き換えを選ぶかどうか
+  /// @param outputExtension 出力ファイルの拡張子
+  /// @returns 出力先と上書き状態を含む計画
   static OutputFilePlan plan({
     required String inputPath,
     Iterable<String> existingPaths = const <String>[],
@@ -137,7 +163,13 @@ class OutputNamePlanner {
     );
   }
 
-  /// 出力先の文字列だけが必要な呼び出し向けの短縮形。
+  /// 出力先の文字列だけを取得する短縮形。
+  /// @param inputPath 変換元のパス
+  /// @param existingPaths 既に存在するパスの一覧
+  /// @param suffix 出力ベース名へ付けるサフィックス
+  /// @param overwrite 入力の置き換えを選ぶかどうか
+  /// @param outputExtension 出力ファイルの拡張子
+  /// @returns 計画された出力先のパス
   static String outputPath({
     required String inputPath,
     Iterable<String> existingPaths = const <String>[],
@@ -155,18 +187,24 @@ class OutputNamePlanner {
   }
 
   /// パスからファイル名部分を切り出す。
+  /// @param path 対象のパス
+  /// @returns ディレクトリを除いたファイル名
   static String _fileName(String path) {
     final separatorIndex = path.lastIndexOf(RegExp(r'[/\\]'));
     return separatorIndex < 0 ? path : path.substring(separatorIndex + 1);
   }
 
   /// パスからファイル名より前のディレクトリ部分を切り出す。
+  /// @param path 対象のパス
+  /// @returns ファイル名より前のディレクトリ部分
   static String _directory(String path) {
     final separatorIndex = path.lastIndexOf(RegExp(r'[/\\]'));
     return separatorIndex < 0 ? '' : path.substring(0, separatorIndex + 1);
   }
 
   /// 拡張子を除いたファイル名を返す。
+  /// @param fileName 対象のファイル名
+  /// @returns 拡張子を除いたファイル名
   static String _stem(String fileName) {
     final extensionIndex = fileName.lastIndexOf('.');
     if (extensionIndex <= 0) {
@@ -176,6 +214,8 @@ class OutputNamePlanner {
   }
 
   /// 小文字化した拡張子だけを返す。
+  /// @param fileName 対象のファイル名
+  /// @returns 小文字化した拡張子 (拡張子がなければ空文字列)
   static String _extension(String fileName) {
     final extensionIndex = fileName.lastIndexOf('.');
     if (extensionIndex <= 0 || extensionIndex == fileName.length - 1) {
@@ -185,6 +225,8 @@ class OutputNamePlanner {
   }
 
   /// ファイル名末尾の Finder 形式の連番を読み取る。
+  /// @param stem 拡張子を除いたファイル名
+  /// @returns 末尾の連番 (該当しなければ null)
   static int? _trailingSequence(String stem) {
     final match = RegExp(r' \((\d+)\)$').firstMatch(stem);
     // 整数の範囲を超える数字列も有効なファイル名なので、その場合は名前の一部として保持する
@@ -192,18 +234,28 @@ class OutputNamePlanner {
   }
 
   /// ファイル名から Finder 形式の連番を取り除く。
+  /// @param stem 拡張子を除いたファイル名
+  /// @returns 末尾の連番を除いたファイル名
   static String _removeTrailingSequence(String stem) {
     return _trailingSequence(stem) == null ? stem : stem.replaceFirst(RegExp(r' \(\d+\)$'), '');
   }
 
   /// 必要な場合だけファイル名末尾へ連番を付ける。
+  /// @param stem 拡張子を除いたファイル名
+  /// @param sequence 付ける連番 (null なら連番を付けない)
+  /// @returns 連番を反映したファイル名
   static String _withSequence(String stem, int? sequence) {
     return sequence == null ? stem : '$stem ($sequence)';
   }
 
   /// ディレクトリとファイル名を結合する。
+  /// @param directory ディレクトリ部分
+  /// @param fileName ファイル名部分
+  /// @returns 結合したパス
   static String _join(String directory, String fileName) => '$directory$fileName';
 
   /// 比較時だけ区切り文字を統一して OS 差を吸収する。
+  /// @param path 比較するパス
+  /// @returns 比較用に正規化したパス
   static String _normalizePath(String path) => path.replaceAll('\\', '/').toLowerCase();
 }

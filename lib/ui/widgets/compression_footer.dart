@@ -7,8 +7,21 @@ import 'package:flutter/cupertino.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../theme.dart';
 
-/// 画像一覧をスクロールしている間も、現在状態と主要操作を表示します。
+/// 画像一覧をスクロールしている間も、現在状態と主要操作を表示する。
 class CompressionFooter extends StatelessWidget {
+  /// 変換状態と操作コールバックを受け取ってフッターを構成する。
+  /// @param completedCount 完了した画像数
+  /// @param failedCount 失敗した画像数
+  /// @param stoppedCount 停止した画像数
+  /// @param progress 全体の進捗率
+  /// @param imageCount キュー内の画像数
+  /// @param hasValidImages 変換可能な画像があるか
+  /// @param isCompressing 変換中か
+  /// @param isStopping 停止処理中か
+  /// @param isOverwriteEnabled 上書き設定が有効か
+  /// @param onStart 変換開始時のコールバック
+  /// @param onStop 変換停止時のコールバック
+  /// @param key ウィジェットを識別するキー
   const CompressionFooter({
     super.key,
     required this.completedCount,
@@ -36,7 +49,9 @@ class CompressionFooter extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback onStop;
 
-  /// 待機、準備、圧縮、停止受付、完了をそれぞれ固有の文とアイコンへ割り当てます。
+  /// 待機、準備、圧縮、停止受付、完了をそれぞれ固有の文とアイコンへ割り当てる。
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns 状態アイコンと表示文の組
   (IconData, String) _status(AppLocalizations l10n) {
     if (isStopping) {
       return (Icons.pending_outlined, l10n.stopping);
@@ -63,6 +78,9 @@ class CompressionFooter extends StatelessWidget {
     return (Icons.check_circle_outline, l10n.statusReady);
   }
 
+  /// 圧縮フッターを構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns 圧縮フッターのウィジェット
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);

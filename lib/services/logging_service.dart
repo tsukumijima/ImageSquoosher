@@ -1,11 +1,11 @@
-/// ファイルとコンソールへアプリケーションログを出力するサービス
+/// ファイルとコンソールへアプリケーションログを出力するサービス。
 library;
 
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-/// ログの重要度
+/// ログの重要度。
 enum LogLevel { debug, info, warning, error }
 
 /// OS ごとのアプリケーションデータ領域でログを管理する。
@@ -13,17 +13,23 @@ class LoggingService {
   /// アプリ全体で共有するログ出力先を作成する。
   LoggingService._();
 
-  /// アプリ全体で共有するシングルトンインスタンス
+  /// アプリ全体で共有するシングルトンインスタンス。
   static final LoggingService instance = LoggingService._();
 
-  /// 保持するログファイルの最大数
+  /// 保持するログファイルの最大数。
   static const int _maxLogFiles = 30;
 
+  /// 現在のログファイル。
   File? _logFile;
+
+  /// ログファイルへの書き込み先。
   IOSink? _logSink;
+
+  /// ログ出力先を初期化済みかどうか。
   bool _isInitialized = false;
 
   /// 起動ごとのログファイルを作成し、古い世代を整理する。
+  /// @returns 初期化処理が完了する Future
   Future<void> initialize() async {
     if (_isInitialized) {
       return;
@@ -53,27 +59,41 @@ class LoggingService {
   }
 
   /// デバッグログを出力する。
+  /// @param message ログ本文
+  /// @param tag ログへ付けるタグ
   void debug(String message, {String? tag}) => _write(LogLevel.debug, message, tag: tag);
 
   /// 情報ログを出力する。
+  /// @param message ログ本文
+  /// @param tag ログへ付けるタグ
   void info(String message, {String? tag}) => _write(LogLevel.info, message, tag: tag);
 
   /// 警告ログを出力する。
+  /// @param message ログ本文
+  /// @param tag ログへ付けるタグ
+  /// @param error 記録する例外
+  /// @param stackTrace 記録するスタックトレース
   void warning(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
     _write(LogLevel.warning, message, tag: tag, error: error, stackTrace: stackTrace);
   }
 
   /// エラーログを出力する。
+  /// @param message ログ本文
+  /// @param tag ログへ付けるタグ
+  /// @param error 記録する例外
+  /// @param stackTrace 記録するスタックトレース
   void error(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
     _write(LogLevel.error, message, tag: tag, error: error, stackTrace: stackTrace);
   }
 
   /// 未書き込みのログをファイルへ反映する。
+  /// @returns 反映処理が完了する Future
   Future<void> flush() async {
     await _logSink?.flush();
   }
 
   /// 終了ログを反映してファイルを閉じる。
+  /// @returns 終了処理が完了する Future
   Future<void> dispose() async {
     if (_isInitialized == false) {
       return;
@@ -88,12 +108,19 @@ class LoggingService {
   }
 
   /// 現在のログファイルのパスを取得する。
+  /// @returns ログファイルのパス。初期化前は `null`
   String? get logFilePath => _logFile?.path;
 
   /// ログディレクトリのパスを取得する。
+  /// @returns ログディレクトリのパス
   String get logDirectoryPath => _resolveLogDirectory().path;
 
   /// ログ本文、例外、スタックトレースを同じ出力先へ記録する。
+  /// @param level ログの重要度
+  /// @param message ログ本文
+  /// @param tag ログへ付けるタグ
+  /// @param error 記録する例外
+  /// @param stackTrace 記録するスタックトレース
   void _write(LogLevel level, String message, {String? tag, Object? error, StackTrace? stackTrace}) {
     final now = DateTime.now();
     final timestamp =
@@ -116,6 +143,8 @@ class LoggingService {
   }
 
   /// 現在のログを含めて新しい30世代だけを保持する。
+  /// @param logDirectory ログを保存するディレクトリ
+  /// @param currentLogPath 保持する現在のログファイルのパス
   Future<void> _cleanupOldLogs(Directory logDirectory, String currentLogPath) async {
     try {
       final logFiles = <({File file, DateTime modified})>[];
@@ -154,6 +183,7 @@ class LoggingService {
   }
 
   /// OS ごとのアプリケーションデータ領域からログディレクトリを決定する。
+  /// @returns ログディレクトリ
   Directory _resolveLogDirectory() {
     final String basePath;
     if (Platform.isMacOS) {
@@ -169,5 +199,7 @@ class LoggingService {
   }
 
   /// 数値を2桁へゼロ埋めする。
+  /// @param value 変換する数値
+  /// @returns 2桁へ整形した文字列
   static String _padZero(int value) => value.toString().padLeft(2, '0');
 }

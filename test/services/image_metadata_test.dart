@@ -150,6 +150,9 @@ void main() {
 
 const _xmpHeaderLength = 29;
 
+/// 指定した Orientation を含む最小の JPEG バイト列を作成する。
+/// @param orientation 埋め込む EXIF Orientation 値
+/// @returns Orientation を含む JPEG バイト列
 Uint8List _jpegWithLittleEndianOrientation(int orientation) {
   final exifData = <int>[
     0x45,
@@ -199,11 +202,18 @@ Uint8List _jpegWithLittleEndianOrientation(int orientation) {
   ]);
 }
 
+/// 指定したキーワードの iTXt チャンクを持つ PNG を作成する。
+/// @param keyword iTXt のキーワード
+/// @param text 格納するテキストデータ
+/// @returns iTXt チャンクを持つ PNG バイト列
 Uint8List _pngWithInternationalText(String keyword, Uint8List text) {
   return _pngWithChunk('iTXt', _pngInternationalTextData(text, keyword: keyword));
 }
 
-/// PNG iTXt の非圧縮テキストデータを作成します。
+/// PNG iTXt の非圧縮テキストデータを作成する。
+/// @param text 格納するテキストデータ
+/// @param keyword テキストのキーワード
+/// @returns PNG iTXt のデータ
 Uint8List _pngInternationalTextData(Uint8List text, {String keyword = 'XML:com.adobe.xmp'}) {
   return Uint8List.fromList(<int>[
     ...keyword.codeUnits,
@@ -216,12 +226,18 @@ Uint8List _pngInternationalTextData(Uint8List text, {String keyword = 'XML:com.a
   ]);
 }
 
-/// PNG tEXt のテキストデータを作成します。
+/// PNG tEXt のテキストデータを作成する。
+/// @param keyword テキストのキーワード
+/// @param text 格納するテキストデータ
+/// @returns PNG tEXt のデータ
 Uint8List _pngTextData(String keyword, Uint8List text) {
   return Uint8List.fromList(<int>[...keyword.codeUnits, 0x00, ...text]);
 }
 
-/// PNG シグネチャと1個のチャンクだけを持つテスト入力を作成します。
+/// PNG シグネチャと1個のチャンクだけを持つテスト入力を作成する。
+/// @param type チャンク種別
+/// @param data チャンクデータ
+/// @returns PNG のバイト列
 Uint8List _pngWithChunk(String type, Uint8List data) {
   final length = data.lengthInBytes;
   return Uint8List.fromList(<int>[
@@ -246,7 +262,10 @@ Uint8List _pngWithChunk(String type, Uint8List data) {
   ]);
 }
 
-/// RIFF/WEBP ヘッダーと1個のチャンクだけを持つテスト入力を作成します。
+/// RIFF/WEBP ヘッダーと1個のチャンクだけを持つテスト入力を作成する。
+/// @param type チャンク種別
+/// @param data チャンクデータ
+/// @returns WebP のバイト列
 Uint8List _webPWithChunk(String type, Uint8List data) {
   final length = data.lengthInBytes;
   final paddedLength = length + (length.isOdd ? 1 : 0);

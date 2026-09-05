@@ -11,7 +11,10 @@ import 'package:image_squoosher/ui/widgets/cupertino_select.dart';
 import 'package:image_squoosher/ui/widgets/home_header.dart';
 import 'package:image_squoosher/ui/widgets/queue_header.dart';
 
-/// デスクトップ用の配色と指定したロケールで操作部品を検証します。
+/// デスクトップ用の配色と指定したロケールで操作部品を検証する画面を構築する。
+/// @param child 検証する操作部品
+/// @param locale 適用するロケール
+/// @returns 操作部品を含むテスト用アプリ
 Widget _app(Widget child, {Locale locale = const Locale('ja')}) => MaterialApp(
   theme: buildAppTheme(Colors.blue),
   locale: locale,

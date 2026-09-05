@@ -35,17 +35,22 @@ enum AppLanguage {
 /// 表示言語をロケールと相互変換する。
 extension AppLanguageExtension on AppLanguage {
   /// ロケールコードを取得する。
+  /// @returns 対応するロケールコード
   String get localeCode => this == AppLanguage.japanese ? 'ja' : 'en';
 
   /// Flutter のロケールを取得する。
+  /// @returns 対応する Flutter ロケール
   Locale get locale => Locale(localeCode);
 
   /// OS のロケールから初回起動時の表示言語を決定する。
+  /// @returns OS のロケールに対応する表示言語
   static AppLanguage fromPlatformLocale() {
     return Platform.localeName.toLowerCase().startsWith('ja') ? AppLanguage.japanese : AppLanguage.english;
   }
 
   /// 保存されたロケールコードを表示言語へ変換する。
+  /// @param localeCode 保存されたロケールコード
+  /// @returns 対応する表示言語
   static AppLanguage fromLocaleCode(String localeCode) {
     return localeCode == 'ja' ? AppLanguage.japanese : AppLanguage.english;
   }
@@ -55,6 +60,8 @@ extension AppLanguageExtension on AppLanguage {
 @JsonSerializable()
 class AppPreferences {
   /// 変換条件と表示言語を保持する。
+  /// @param conversionSettings 画像の変換条件
+  /// @param languageCode 表示言語のロケールコード
   const AppPreferences({
     this.conversionSettings = const ConversionSettings(),
     this.languageCode = 'ja',
@@ -69,13 +76,14 @@ class AppPreferences {
   final String languageCode;
 
   /// 初回起動時の表示言語へ OS のロケールを反映した既定値を取得する。
+  /// @returns 既定のアプリケーション設定
   factory AppPreferences.defaults() {
     return AppPreferences(languageCode: AppLanguageExtension.fromPlatformLocale().localeCode);
   }
 
-  /// JSON から設定を復元する。
-  ///
-  /// 平坦な JSON と入れ子の JSON の両形式から利用者の変換条件を読み込む。
+  /// 平坦な JSON と入れ子の JSON の両形式から設定を復元する。
+  /// @param json 保存された設定の JSON オブジェクト
+  /// @returns 復元したアプリケーション設定
   factory AppPreferences.fromJson(Map<String, dynamic> json) {
     if (json['conversionSettings'] is Map<String, dynamic>) {
       final preferences = _$AppPreferencesFromJson(json);
@@ -91,9 +99,13 @@ class AppPreferences {
   }
 
   /// JSON へ保存できる値へ変換する。
+  /// @returns JSON オブジェクト
   Map<String, dynamic> toJson() => _$AppPreferencesToJson(this);
 
   /// 指定した項目だけを更新した設定を返す。
+  /// @param conversionSettings 更新する変換条件
+  /// @param languageCode 更新する表示言語のロケールコード
+  /// @returns 更新後のアプリケーション設定
   AppPreferences copyWith({
     ConversionSettings? conversionSettings,
     String? languageCode,
@@ -105,6 +117,7 @@ class AppPreferences {
   }
 
   /// 表示言語を取得する。
+  /// @returns 表示言語
   AppLanguage get language => AppLanguageExtension.fromLocaleCode(languageCode);
 }
 
@@ -112,6 +125,8 @@ class AppPreferences {
 @JsonSerializable()
 class WindowSettings {
   /// ウィンドウサイズを保持する。
+  /// @param width ウィンドウの幅
+  /// @param height ウィンドウの高さ
   const WindowSettings({this.width = windowDefaultWidth, this.height = windowDefaultHeight});
 
   /// ウィンドウの幅。
@@ -121,9 +136,12 @@ class WindowSettings {
   final double height;
 
   /// 既定のウィンドウ状態を取得する。
+  /// @returns 既定のウィンドウ状態
   factory WindowSettings.defaults() => const WindowSettings();
 
   /// JSON からウィンドウ状態を復元する。
+  /// @param json 保存されたウィンドウ状態の JSON オブジェクト
+  /// @returns 復元したウィンドウ状態
   factory WindowSettings.fromJson(Map<String, dynamic> json) {
     final settings = _$WindowSettingsFromJson(json);
     return WindowSettings(
@@ -133,9 +151,13 @@ class WindowSettings {
   }
 
   /// JSON へ保存できる値へ変換する。
+  /// @returns JSON オブジェクト
   Map<String, dynamic> toJson() => _$WindowSettingsToJson(this);
 
   /// 指定した項目だけを更新したウィンドウ状態を返す。
+  /// @param width 更新する幅
+  /// @param height 更新する高さ
+  /// @returns 更新後のウィンドウ状態
   WindowSettings copyWith({double? width, double? height}) {
     return WindowSettings(
       width: width ?? this.width,
@@ -147,6 +169,8 @@ class WindowSettings {
 /// 起動時に一度読み込み、アプリ全体で共有する設定のスナップショット。
 class SettingsSnapshot {
   /// 変換・表示設定とウィンドウ状態を一組で保持する。
+  /// @param preferences 変換条件と表示言語
+  /// @param windowSettings ウィンドウ状態
   const SettingsSnapshot({required this.preferences, required this.windowSettings});
 
   /// 変換条件と表示言語。
@@ -156,6 +180,7 @@ class SettingsSnapshot {
   final WindowSettings windowSettings;
 
   /// OS のロケールを反映した初回起動用スナップショットを取得する。
+  /// @returns 既定の設定スナップショット
   factory SettingsSnapshot.defaults() {
     return SettingsSnapshot(
       preferences: AppPreferences.defaults(),
@@ -170,6 +195,8 @@ class _ConversionSettingsJsonConverter implements JsonConverter<ConversionSettin
   const _ConversionSettingsJsonConverter();
 
   /// JSON から変換条件を復元する。
+  /// @param json 変換条件を含む JSON オブジェクト
+  /// @returns 復元した変換条件
   @override
   ConversionSettings fromJson(Map<String, dynamic> json) {
     final presetName = json['aspectRatioPreset'] as String?;
@@ -196,6 +223,8 @@ class _ConversionSettingsJsonConverter implements JsonConverter<ConversionSettin
   }
 
   /// 変換条件を JSON へ保存できる値へ変換する。
+  /// @param settings JSON 化する変換条件
+  /// @returns JSON オブジェクト
   @override
   Map<String, dynamic> toJson(ConversionSettings settings) {
     return {
@@ -215,6 +244,8 @@ class _ConversionSettingsJsonConverter implements JsonConverter<ConversionSettin
 }
 
 /// 保存値を対応するロケールコードへ正規化する。
+/// @param value 保存値
+/// @returns `ja` または `en` のロケールコード
 String _languageCodeFromJson(Object? value) {
   if (value == 'ja' || value == 'en') {
     return value! as String;
@@ -223,4 +254,6 @@ String _languageCodeFromJson(Object? value) {
 }
 
 /// 対応するロケールコードだけを保存する。
+/// @param value 保存するロケールコード
+/// @returns JSON へ保存するロケールコード
 String _languageCodeToJson(String value) => value == 'ja' ? 'ja' : 'en';

@@ -9,14 +9,20 @@ import '../../services/logging_service.dart';
 import '../../services/update_check_service.dart';
 import 'app_snack_bar.dart';
 
-/// 利用可能な更新を画面上部に控えめに表示する。
+/// 利用可能な更新を画面上部に表示する。
 class UpdateBanner extends StatelessWidget {
   final UpdateCheckResult result;
   final VoidCallback onDismiss;
 
+  /// 更新情報と閉じる操作を受け取ってバナーを構成する。
+  /// @param key ウィジェットを識別するキー
+  /// @param result 更新確認の結果
+  /// @param onDismiss バナーを閉じるコールバック
   const UpdateBanner({super.key, required this.result, required this.onDismiss});
 
   /// リリースページを標準ブラウザで開く。
+  /// @param context 通知表示に使う BuildContext
+  /// @returns ブラウザ起動処理の完了を表す Future
   Future<void> _openReleasePage(BuildContext context) async {
     final releaseURL = result.releaseURL;
     final releaseURI = releaseURL == null ? null : Uri.tryParse(releaseURL);
@@ -44,6 +50,9 @@ class UpdateBanner extends StatelessWidget {
     }
   }
 
+  /// 更新バナーを構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns 更新バナーのウィジェット
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);

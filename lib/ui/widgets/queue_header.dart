@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 
-/// 一覧名、件数、一括解除を1行へ収めます。
+/// 一覧名、件数、一括解除を1行へ収める。
 class QueueHeader extends StatelessWidget {
+  /// 件数と一括解除操作を受け取って一覧見出しを構成する。
+  /// @param key ウィジェットを識別するキー
+  /// @param imageCount 一覧内の画像数
+  /// @param canClear 一括解除操作を有効にするか
+  /// @param onClear 一括解除時のコールバック
   const QueueHeader({
     super.key,
     required this.imageCount,
@@ -18,6 +23,9 @@ class QueueHeader extends StatelessWidget {
   final bool canClear;
   final VoidCallback onClear;
 
+  /// 一覧見出しを構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns 一覧見出しのウィジェット
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);

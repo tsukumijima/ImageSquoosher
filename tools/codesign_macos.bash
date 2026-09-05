@@ -9,15 +9,21 @@ readonly PROJECT_ROOT
 SIGN_MACHO_LIST_PATH=''
 SIGN_BUNDLE_LIST_PATH=''
 
+# 署名処理の進捗を標準出力へ書く
+# @param ... ログ本文として空白で連結する文字列
 function log() {
     echo "[macos-codesign] $*"
 }
 
+# エラーを標準エラーへ書き、終了コード1で停止する
+# @param ... エラー本文として空白で連結する文字列
 function fail() {
     echo "[macos-codesign] ERROR: $*" >&2
     exit 1
 }
 
+# 必要なコマンドが検索パスに存在することを確認する
+# @param command_name 確認するコマンド名
 function require_command() {
     local command_name="$1"
 
@@ -26,6 +32,8 @@ function require_command() {
     fi
 }
 
+# 必須の環境変数に空でない値が設定されていることを確認する
+# @param env_name 確認する環境変数名
 function require_env() {
     local env_name="$1"
 
@@ -34,6 +42,10 @@ function require_env() {
     fi
 }
 
+# Base64 の内容を復号してファイルへ書き出す
+# @param input_value Base64 で符号化された内容
+# @param output_path 復号結果の保存先
+# @returns 復号コマンドの終了コード
 function decode_base64_file() {
     local input_value="$1"
     local output_path="$2"
@@ -47,6 +59,7 @@ function decode_base64_file() {
     printf '%s' "$input_value" | base64 --decode > "$output_path"
 }
 
+# 環境変数の署名証明書を一時キーチェーンへ取り込み、検索対象へ追加する
 function setup_keychain() {
     require_command security
     require_env MACOS_CERTIFICATE_P12_BASE64
@@ -99,6 +112,8 @@ function setup_keychain() {
     security find-identity -v -p codesigning "$keychain_path"
 }
 
+# 明示指定またはキーチェーンから署名 ID を取得して標準出力へ書く
+# @returns 取得成功時は0、証明書が見つからない場合はエラーで終了
 function detect_codesign_identity() {
     local identity="${MACOS_CODESIGN_IDENTITY:-}"
     local -a find_identity_args=(-v -p codesigning)
@@ -126,12 +141,18 @@ function detect_codesign_identity() {
     echo "$identity"
 }
 
+# ファイルの実体が Mach-O 形式か判定する
+# @param target_path 検査するファイルのパス
+# @returns Mach-O の場合は0、それ以外は非0
 function is_macho_file() {
     local target_path="$1"
 
     file -b "$target_path" | grep -q 'Mach-O'
 }
 
+# メイン実行ファイルをバンドル単位の署名へ委ねるか判定する
+# @param target_path 署名対象候補のパス
+# @returns バンドル署名へ委ねる場合は0、それ以外は非0
 function should_skip_individual_codesign() {
     local target_path="$1"
 
@@ -139,6 +160,9 @@ function should_skip_individual_codesign() {
     [[ "$target_path" == *.app/Contents/MacOS/* || "$target_path" == *.appex/Contents/MacOS/* ]]
 }
 
+# 個別署名する Mach-O を列挙し、パスが長い順の一覧も作る
+# @param app_path 探索するアプリバンドル
+# @param output_path 長さ付き一覧の保存先 (署名用一覧は .sorted を付けたパス)
 function collect_macho_files() {
     local app_path="$1"
     local output_path="$2"
@@ -153,6 +177,9 @@ function collect_macho_files() {
     sort -rn "$output_path" | cut -f2- > "$output_path.sorted"
 }
 
+# ネストしたバンドルを内側から順に列挙する
+# @param app_path 探索するアプリバンドル
+# @param output_path バンドル一覧の保存先
 function collect_bundle_paths() {
     local app_path="$1"
     local output_path="$2"
@@ -162,6 +189,9 @@ function collect_bundle_paths() {
         > "$output_path"
 }
 
+# codesign の失敗時に診断を標準エラーへ表示する
+# @param ... codesign へ渡す引数
+# @returns 成功時は0、署名失敗時は1
 function run_codesign() {
     local output
 
@@ -172,6 +202,9 @@ function run_codesign() {
     fi
 }
 
+# 単体の実行ファイルへ署名を適用する
+# @param target_path 署名するファイルのパス
+# @returns 署名処理の終了コード
 function sign_file() {
     local target_path="$1"
     local identity
@@ -186,6 +219,9 @@ function sign_file() {
     run_codesign "${arguments[@]}" "$target_path"
 }
 
+# バンドルの種類に合う entitlements を選択して署名する
+# @param bundle_path 署名する .app、.appex または .framework のパス
+# @returns 署名処理の終了コード
 function sign_bundle() {
     local bundle_path="$1"
     local entitlements_path=''
@@ -214,6 +250,8 @@ function sign_bundle() {
     run_codesign "${arguments[@]}" "$bundle_path"
 }
 
+# 内部の実行ファイルとバンドルを順に署名し、本体の署名を検証する
+# @param app_path 署名するアプリバンドルのパス
 function sign_app() {
     local app_path="$1"
 
@@ -245,6 +283,7 @@ function sign_app() {
     verify_code_signature "$app_path"
 }
 
+# 環境変数の公証用 API キーを復号し、保存先を標準出力へ書く
 function setup_notary_api_key() {
     require_env APPLE_API_KEY_ID
     require_env APPLE_API_KEY_P8_BASE64
@@ -262,6 +301,8 @@ function setup_notary_api_key() {
     echo "$api_key_path"
 }
 
+# アプリを Apple の公証へ提出し、成功したチケットを添付する
+# @param app_path 公証する署名済みアプリバンドルのパス
 function notarize_app() {
     local app_path="$1"
 
@@ -292,6 +333,9 @@ function notarize_app() {
     xcrun stapler validate "$app_path"
 }
 
+# ネストしたコードを含むアプリの署名を検証する
+# @param app_path 検証するアプリバンドルのパス
+# @returns codesign による検証の終了コード
 function verify_code_signature() {
     local app_path="$1"
 
@@ -305,6 +349,8 @@ function verify_code_signature() {
     codesign --verify --deep --strict --verbose=4 "$app_path"
 }
 
+# アプリの署名と Gatekeeper による起動許可を検証する
+# @param app_path 検証するアプリバンドルのパス
 function verify_app() {
     local app_path="$1"
 
@@ -321,6 +367,7 @@ function verify_app() {
     log "App bundle signature and Gatekeeper assessment are valid."
 }
 
+# 使用可能なサブコマンドと引数を標準出力へ表示する
 function usage() {
     cat <<'USAGE'
 Usage:

@@ -16,11 +16,22 @@ import 'image_conversion_pipeline.dart';
 import 'image_pipeline_types.dart';
 import 'logging_service.dart';
 
-/// 画像キューの現在の処理状態です。
+/// 画像キューの現在の処理状態。
 enum QueuedImageStatus { queued, processing, completed, failed, stopped }
 
-/// 画面に表示する入力画像と変換結果です。
+/// 画面に表示する入力画像と変換結果。
 class QueuedImage {
+  /// 入力画像と変換状態を作成する。
+  /// @param path 入力画像のパス
+  /// @param byteLength 入力画像のファイルサイズ
+  /// @param sourceDimensions 入力画像の寸法
+  /// @param outputPath 出力画像のパス
+  /// @param outputDimensions 出力画像の寸法
+  /// @param outputByteLength 出力画像のファイルサイズ
+  /// @param status キュー内の処理状態
+  /// @param progress 変換の進捗率
+  /// @param isInputValid 入力画像が変換可能かどうか
+  /// @param errorMessage 入力または変換に失敗した理由
   const QueuedImage({
     required this.path,
     this.byteLength,
@@ -34,20 +45,53 @@ class QueuedImage {
     this.errorMessage,
   });
 
+  /// 入力画像のパス
   final String path;
+
+  /// 入力画像のファイルサイズ
   final int? byteLength;
+
+  /// 入力画像の寸法
   final ImageDimensions? sourceDimensions;
+
+  /// 出力画像のパス
   final String? outputPath;
+
+  /// 出力画像の寸法
   final ImageDimensions? outputDimensions;
+
+  /// 出力画像のファイルサイズ
   final int? outputByteLength;
+
+  /// キュー内の処理状態
   final QueuedImageStatus status;
+
+  /// 変換の進捗率
   final double progress;
+
+  /// 入力画像が変換可能かどうか
   final bool isInputValid;
+
+  /// 入力または変換に失敗した理由
   final String? errorMessage;
 
+  /// パスからファイル名を取得する。
+  /// @returns 入力画像のファイル名
   String get fileName => path.split(Platform.pathSeparator).last;
 
-  /// 新しい読み取り結果や変換状態を反映した行を返します。
+  /// 指定した読み取り結果や変換状態を反映した行を返す。
+  /// @param byteLength 更新する入力画像のファイルサイズ
+  /// @param sourceDimensions 更新する入力画像の寸法
+  /// @param outputPath 更新する出力画像のパス
+  /// @param outputDimensions 更新する出力画像の寸法
+  /// @param outputByteLength 更新する出力画像のファイルサイズ
+  /// @param status 更新する処理状態
+  /// @param progress 更新する進捗率
+  /// @param isInputValid 更新する入力可否
+  /// @param errorMessage 更新するエラーメッセージ
+  /// @param clearErrorMessage エラーメッセージを消去するかどうか
+  /// @param clearOutputByteLength 出力ファイルサイズを消去するかどうか
+  /// @returns 更新後のキュー項目
   QueuedImage copyWith({
     int? byteLength,
     ImageDimensions? sourceDimensions,
@@ -76,25 +120,43 @@ class QueuedImage {
   }
 }
 
-/// キューへ追加する時点で読み取る静止画の情報です。
+/// キューへ追加する時点で読み取る静止画の情報。
 class _ImageInspection {
+  /// 入力画像の寸法情報を作成する。
+  /// @param dimensions 入力画像の寸法
   const _ImageInspection(this.dimensions);
 
+  /// 入力画像の寸法
   final ImageDimensions dimensions;
 }
 
-/// 変換エンジンの開始時に渡す条件です。
+/// 変換エンジンの開始時に渡す条件。
 class CompressionRequest {
+  /// 変換対象と変換条件を作成する。
+  /// @param images 変換対象の画像一覧
+  /// @param settings 適用する変換条件
+  /// @param onProgress 画像ごとの進捗通知
   const CompressionRequest({required this.images, required this.settings, this.onProgress});
 
+  /// 変換対象の画像一覧
   final List<QueuedImage> images;
+
+  /// 画像ごとの進捗通知
   final void Function(String path, double progress)? onProgress;
+
+  /// 適用する変換条件
   final ConversionSettings settings;
 }
 
-/// 実際のエンコーダーが実装するインターフェースです。
+/// 実際のエンコーダーが実装するインターフェース。
 abstract interface class ImageCompressionEngine {
-  /// 画像を圧縮し、個々の行の状態を逐次通知します。
+  /// 画像を圧縮し、個々の行の状態を逐次通知する。
+  /// @param request 変換対象と変換条件
+  /// @param stopToken 停止要求を共有するトークン
+  /// @param onItemStarted 画像の処理開始時に呼び出す通知
+  /// @param onItemCompleted 画像の処理完了時に呼び出す通知
+  /// @param onItemFailed 画像の処理失敗時に呼び出す通知
+  /// @returns バッチ全体の完了結果
   Future<ImageBatchConversionResult> compress(
     CompressionRequest request, {
     required ImageConversionStopToken stopToken,
@@ -104,12 +166,21 @@ abstract interface class ImageCompressionEngine {
   });
 }
 
-/// 既存の `ImageConversionPipeline` を画面用の逐次処理へ接続します。
+/// 既存の `ImageConversionPipeline` を画面用の逐次処理へ接続する。
 class PipelineCompressionEngine implements ImageCompressionEngine {
+  /// 変換パイプラインを指定してエンジンを作成する。
+  /// @param pipeline 使用する変換パイプライン
   PipelineCompressionEngine({ImageConversionPipeline? pipeline}) : _pipeline = pipeline ?? ImageConversionPipeline();
 
   final ImageConversionPipeline _pipeline;
 
+  /// 画像を順番に圧縮し、各画像の状態を通知する。
+  /// @param request 変換対象と変換条件
+  /// @param stopToken 停止要求を共有するトークン
+  /// @param onItemStarted 画像の処理開始時に呼び出す通知
+  /// @param onItemCompleted 画像の処理完了時に呼び出す通知
+  /// @param onItemFailed 画像の処理失敗時に呼び出す通知
+  /// @returns バッチ全体の完了結果
   @override
   Future<ImageBatchConversionResult> compress(
     CompressionRequest request, {
@@ -170,7 +241,8 @@ class PipelineCompressionEngine implements ImageCompressionEngine {
     );
   }
 
-  /// アプリ配布物と開発用の出力先から `cjpeg` を探します。
+  /// アプリ配布物と開発用の出力先から `cjpeg` を探す。
+  /// @returns 使用する `cjpeg` のパス
   static Future<File> _resolveCjpegExecutable() async {
     final executableDirectory = File(Platform.resolvedExecutable).parent;
     final configuredPath = Platform.environment['IMAGE_SQUOOSHER_CJPEG'];
@@ -195,7 +267,9 @@ class PipelineCompressionEngine implements ImageCompressionEngine {
     throw StateError('MozJPEG cjpeg executable was not found.');
   }
 
-  /// ヘッダーから寸法と EXIF の向きを読み取り、アニメーションを一覧で拒否します。
+  /// ヘッダーから寸法と EXIF の向きを読み取り、アニメーションを一覧で拒否する。
+  /// @param inputFile 検査する入力画像
+  /// @returns 入力画像の寸法情報
   static Future<_ImageInspection> _inspectInputImage(File inputFile) async {
     final inputBytes = await inputFile.readAsBytes();
     final decoder = image.findDecoderForData(inputBytes);
@@ -225,7 +299,9 @@ class PipelineCompressionEngine implements ImageCompressionEngine {
     );
   }
 
-  /// 保存済みの同名出力も避けられるよう、ディレクトリ内のパスを読み取ります。
+  /// 保存済みの同名出力も避けられるよう、ディレクトリ内のパスを読み取る。
+  /// @param directory 読み取るディレクトリ
+  /// @returns ディレクトリ内のパス集合
   static Future<Set<String>> _existingPaths(Directory directory) async {
     if (await directory.exists() == false) {
       return <String>{};
@@ -233,7 +309,9 @@ class PipelineCompressionEngine implements ImageCompressionEngine {
     return directory.list().map((entity) => entity.path).toSet();
   }
 
-  /// 入力が残っている間に、検証済みの一時 JPEG へ作成日時と更新日時を複製します。
+  /// 入力が残っている間に、検証済みの一時 JPEG へ作成日時と更新日時を複製する。
+  /// @param sourceFile 日時を読み取る入力ファイル
+  /// @param stagedOutput 日時を書き込む一時出力
   static Future<void> _copySourceFileDates(File sourceFile, File stagedOutput) async {
     try {
       await const MethodChannel('net.tsukumijima.image-squoosher/finder_sync').invokeMethod<void>(
@@ -251,7 +329,9 @@ class PipelineCompressionEngine implements ImageCompressionEngine {
     }
   }
 
-  /// PNG/WebP の上書き時は、日時まで反映済みの JPEG を公開してから元入力を削除します。
+  /// PNG/WebP の上書き時は、日時まで反映済みの JPEG を公開してから元入力を削除する。
+  /// @param result 確定した変換結果
+  /// @param settings 適用した変換条件
   static Future<void> _removeConvertedSource(
     ImageConversionResult result,
     ConversionSettings settings,
@@ -262,8 +342,12 @@ class PipelineCompressionEngine implements ImageCompressionEngine {
   }
 }
 
-/// 画面が扱う画像一覧と実行状態を管理します。
+/// 画面が扱う画像一覧と実行状態を管理する。
 class SquoosherController extends ChangeNotifier {
+  /// 画像変換エンジンと出力パス読み取り処理を指定して状態管理を作成する。
+  /// @param engine 使用する画像変換エンジン
+  /// @param existingPathsReader 出力先の既存パスを読み取る処理
+  /// @param log 使用するログサービス
   SquoosherController({
     ImageCompressionEngine? engine,
     Future<Set<String>> Function(Directory directory)? existingPathsReader,
@@ -272,18 +356,39 @@ class SquoosherController extends ChangeNotifier {
        _existingPathsReader = existingPathsReader ?? PipelineCompressionEngine._existingPaths,
        _log = log ?? LoggingService.instance;
 
+  /// 画像変換を実行するエンジン
   final ImageCompressionEngine _engine;
+
+  /// 出力先の既存パスを読み取る処理
   final Future<Set<String>> Function(Directory directory) _existingPathsReader;
+
+  /// キュー操作のログ出力先
   final LoggingService _log;
+
+  /// 画面に表示する画像一覧
   final List<QueuedImage> _images = [];
+
+  /// 実行中の変換へ停止要求を伝えるトークン
   ImageConversionStopToken? _stopToken;
+
+  /// 画面へ表示する変換条件
   ConversionSettings? _displaySettings;
   // ディスク確認中に設定やキューが変わった場合、古い出力計画を画面へ反映しないための世代番号
   int _outputPlanGeneration = 0;
+
+  /// 変換を実行中かどうか。
   bool _isCompressing = false;
+
+  /// 停止処理を要求済みかどうか。
   bool _isStopping = false;
+
+  /// 直前の変換が停止要求で終了したかどうか。
   bool _lastRunWasStopped = false;
+
+  /// コントローラーを破棄済みかどうか。
   bool _isDisposed = false;
+
+  /// 画像検査処理を直列化した末尾。
   Future<void> _inspectionTail = Future<void>.value();
   // 行の copyWith() と独立した識別子で、削除や同じパスの再追加をまたぐ検査結果を区別する
   final Map<String, Object> _inspectionTokens = {};
@@ -303,18 +408,47 @@ class SquoosherController extends ChangeNotifier {
     if (!_isDisposed) super.notifyListeners();
   }
 
+  /// 画面に表示する画像一覧の読み取り専用コピー。
+  /// @returns 現在の画像一覧
   List<QueuedImage> get images => List.unmodifiable(_images);
+
+  /// 変換を実行中かどうか。
+  /// @returns 実行中の場合は `true`
   bool get isCompressing => _isCompressing;
+
+  /// 停止処理を要求済みかどうか。
+  /// @returns 停止処理中の場合は `true`
   bool get isStopping => _isStopping;
+
+  /// 直前の変換が停止要求で終了したかどうか。
+  /// @returns 停止要求で終了した場合は `true`
   bool get lastRunWasStopped => _lastRunWasStopped;
+
+  /// 完了した画像の件数。
+  /// @returns 完了した画像の件数
   int get completedCount => _images.where((image) => image.status == QueuedImageStatus.completed).length;
+
+  /// 失敗した画像の件数。
+  /// @returns 失敗した画像の件数
   int get failedCount => _images.where((image) => image.status == QueuedImageStatus.failed).length;
+
+  /// 停止済み画像の件数。
+  /// @returns 停止済み画像の件数
   int get stoppedCount => _images.where((image) => image.status == QueuedImageStatus.stopped).length;
+
+  /// キュー全体の進捗率。
+  /// @returns キュー全体の進捗率
   double get progress => _images.isEmpty
       ? 0
       : _images.fold<double>(0, (sum, image) => sum + (image.status == QueuedImageStatus.failed ? 1 : image.progress)) /
             _images.length;
+
+  /// 変換可能な画像が含まれるかどうか。
+  /// @returns 変換可能な画像がある場合は `true`
   bool get hasValidImages => _images.any((image) => image.isInputValid);
+
+  /// 未完了で変換可能な画像が含まれるかどうか。
+  /// @returns 変換対象がある場合は `true`
   bool get hasPendingImages => _images.any(
     (image) =>
         image.isInputValid &&
@@ -322,7 +456,9 @@ class SquoosherController extends ChangeNotifier {
         image.status != QueuedImageStatus.processing,
   );
 
-  /// 外部のファイル選択機能から得たパスを一覧へ加え、重複は除外します。
+  /// 外部のファイル選択機能から得たパスを一覧へ加え、重複は除外する。
+  /// @param paths 追加する入力画像のパス
+  /// @returns 追加した画像の件数
   int addFiles(Iterable<String> paths) {
     if (_isCompressing) {
       return 0;
@@ -354,7 +490,9 @@ class SquoosherController extends ChangeNotifier {
     return addedCount;
   }
 
-  /// 現在の一覧を置き換え、Finder などから受け取った新しい選択を反映します。
+  /// 現在の一覧を置き換え、Finder などから受け取った新しい選択を反映する。
+  /// @param paths 新しい入力画像のパス
+  /// @returns 追加した画像の件数
   int replaceFiles(Iterable<String> paths) {
     if (_isCompressing) {
       return 0;
@@ -369,7 +507,7 @@ class SquoosherController extends ChangeNotifier {
     return addedCount;
   }
 
-  /// 画面上のキューを空にします。
+  /// 画面上のキューを空にする。
   void clear() {
     if (_isCompressing || _images.isEmpty) {
       return;
@@ -381,7 +519,8 @@ class SquoosherController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 指定した画像だけを一覧から外します。
+  /// 指定した画像だけを一覧から外す。
+  /// @param path 一覧から外す画像のパス
   void removeFile(String path) {
     if (_isCompressing) {
       return;
@@ -400,7 +539,7 @@ class SquoosherController extends ChangeNotifier {
     }
   }
 
-  /// 完了・失敗・停止済みの行を、同じ設定で再実行できる待機状態へ戻します。
+  /// 完了・失敗・停止済みの行を、同じ設定で再実行できる待機状態へ戻す。
   void resetResults() {
     if (_isCompressing) {
       return;
@@ -423,7 +562,8 @@ class SquoosherController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 指定された変換条件を各行の予定出力へ反映します。
+  /// 指定された変換条件を各行の予定出力へ反映する。
+  /// @param settings 予定出力の計算に使う変換条件
   Future<void> updateOutputPlans(ConversionSettings settings) async {
     // 実行中は開始時の条件と結果表示を保持する
     if (_isCompressing) {
@@ -432,7 +572,8 @@ class SquoosherController extends ChangeNotifier {
     await _updateOutputPlans(settings);
   }
 
-  /// 変換条件の実変更を判定し、未完了の行に出力計画を作ります。
+  /// 変換条件の実変更を判定し、未完了の行に出力計画を作る。
+  /// @param settings 出力計画に使う変換条件
   Future<void> _updateOutputPlans(ConversionSettings settings) async {
     final outputPlanGeneration = ++_outputPlanGeneration;
     final previousSettings = _displaySettings;
@@ -522,7 +663,9 @@ class SquoosherController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 変換を開始し、完了・失敗をそれぞれの行へ記録します。
+  /// 変換を開始し、完了・失敗をそれぞれの行へ記録する。
+  /// @param settings 適用する変換条件
+  /// @returns 変換処理を開始できた場合は `true`
   Future<bool> compress(ConversionSettings settings) async {
     if (_isDisposed || hasPendingImages == false || _isCompressing) {
       return false;
@@ -574,7 +717,7 @@ class SquoosherController extends ChangeNotifier {
     }
   }
 
-  /// 現在の画像を安全に完了させ、次の画像を開始する前に停止します。
+  /// 現在の画像を安全に完了させ、次の画像を開始する前に停止する。
   void requestStop() {
     if (_isCompressing == false || _isStopping) {
       return;
@@ -585,7 +728,9 @@ class SquoosherController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// ファイルの追加直後にも、一覧で寸法とファイルサイズを確認できるようにします。
+  /// ファイルの追加直後にも、一覧で寸法とファイルサイズを確認できるようにする。
+  /// @param path 詳細を読み取る画像のパス
+  /// @param inspectionToken 読み取り結果を識別するトークン
   Future<void> _loadImageDetails(String path, Object inspectionToken) async {
     try {
       final inputFile = File(path);
@@ -616,12 +761,15 @@ class SquoosherController extends ChangeNotifier {
     }
   }
 
-  /// 変換中の行を見つけて状態を切り替えます。
+  /// 変換中の行を見つけて状態を切り替える。
+  /// @param queuedImage 処理を開始した画像
   void _markProcessing(QueuedImage queuedImage) {
     _replaceByPath(queuedImage.path, (current) => current.copyWith(status: QueuedImageStatus.processing, progress: 0));
   }
 
-  /// エンコーダーの細かな通知を描画に必要な刻みへまとめます。
+  /// エンコーダーの細かな通知を描画に必要な刻みへまとめる。
+  /// @param path 進捗を更新する画像のパス
+  /// @param progress 新しい進捗率
   void _markProgress(String path, double progress) {
     final index = _images.indexWhere((image) => image.path == path);
     if (index < 0 || _isDisposed) return;
@@ -630,7 +778,8 @@ class SquoosherController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 成功した出力の寸法とファイルサイズを行へ表示します。
+  /// 成功した出力の寸法とファイルサイズを行へ表示する。
+  /// @param result 確定した変換結果
   Future<void> _markCompleted(ImageConversionResult result) async {
     final outputSize = await result.outputFile.length();
     // PNG / WebP の上書きで元入力が削除された行は、再実行の対象から外して成功結果を保持する
@@ -650,7 +799,8 @@ class SquoosherController extends ChangeNotifier {
     );
   }
 
-  /// 個別失敗は次の画像を続行できるよう、該当行だけへ理由を残します。
+  /// 個別失敗は次の画像を続行できるよう、該当行だけへ理由を残す。
+  /// @param failure 変換に失敗した画像と理由
   void _markFailed(ImageConversionFailure failure) {
     _replaceByPath(
       failure.inputFile.path,
@@ -658,7 +808,7 @@ class SquoosherController extends ChangeNotifier {
     );
   }
 
-  /// 停止要求を受けた後に未着手の行を停止済みとして残します。
+  /// 停止要求を受けた後に未着手の行を停止済みとして残す。
   void _markRemainingAsStopped() {
     for (var index = 0; index < _images.length; index += 1) {
       if (_images[index].status == QueuedImageStatus.queued) {
@@ -667,7 +817,9 @@ class SquoosherController extends ChangeNotifier {
     }
   }
 
-  /// パスに対応する1行を置き換え、画面へ変更を通知します。
+  /// パスに対応する1行を置き換え、画面へ変更を通知する。
+  /// @param path 更新する画像のパス
+  /// @param update 現在の行から更新後の行を作る処理
   void _replaceByPath(String path, QueuedImage Function(QueuedImage current) update) {
     final index = _images.indexWhere((image) => image.path == path);
     if (index < 0) {
@@ -677,7 +829,9 @@ class SquoosherController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 異なる区切り文字や相対パスで渡されても同じファイルとして扱います。
+  /// 異なる区切り文字や相対パスで渡されても同じファイルとして扱う。
+  /// @param path 正規化する画像のパス
+  /// @returns 比較に使う絶対パス
   static String _normalizedPath(String path) {
     if (path.trim().isEmpty) {
       return '';

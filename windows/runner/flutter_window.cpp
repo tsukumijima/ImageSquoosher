@@ -14,12 +14,16 @@ namespace {
 constexpr char kFileOperationsChannelName[] =
     "net.tsukumijima.image-squoosher/finder_sync";
 
-// 日本語や空白を含むパスも Win32 API へ欠損なく渡せるよう UTF-16 に変換する
+/// 日本語や空白を含むパスを Win32 API 用の UTF-16 に変換する。
+/// @param utf8 変換する UTF-8 文字列
+/// @returns UTF-16 文字列 (空の入力や変換失敗では空文字列)
 std::wstring Utf8ToWide(const std::string& utf8) {
+  // 空の入力は空文字列として返す
   if (utf8.empty()) {
     return std::wstring();
   }
 
+  // UTF-16 の必要文字数を求めてから出力領域を確保する
   const int size = MultiByteToWideChar(
       CP_UTF8, MB_ERR_INVALID_CHARS, utf8.c_str(),
       static_cast<int>(utf8.size()), nullptr, 0);
@@ -34,10 +38,15 @@ std::wstring Utf8ToWide(const std::string& utf8) {
   return converted == size ? wide : std::wstring();
 }
 
-// 元画像へ書き込み権限を要求せず、読み取り用と書き込み用のハンドルを分けて日時を複製する
+/// 読み取り用と書き込み用のハンドルを分けて作成日時と更新日時を複製する。
+/// @param source_path 元画像の UTF-16 パス
+/// @param output_path 日時を反映する出力ファイルの UTF-16 パス
+/// @param error_code 失敗時に Win32 エラーコードを書き込む有効なポインター
+/// @returns 両方の日時を反映できた場合は true
 bool CopyFileDates(const std::wstring& source_path,
                    const std::wstring& output_path,
                    DWORD* error_code) {
+  // 元画像は属性の読み取り権限だけで開く
   const HANDLE source_handle = CreateFileW(
       source_path.c_str(), FILE_READ_ATTRIBUTES,
       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
@@ -47,6 +56,7 @@ bool CopyFileDates(const std::wstring& source_path,
     return false;
   }
 
+  // 作成日時と更新日時を取得し、元画像のハンドルを解放する
   FILETIME creation_time;
   FILETIME modified_time;
   const BOOL read_succeeded =
@@ -58,6 +68,7 @@ bool CopyFileDates(const std::wstring& source_path,
   }
   CloseHandle(source_handle);
 
+  // 出力は属性の書き込み権限で開き、取得した日時を反映する
   const HANDLE output_handle = CreateFileW(
       output_path.c_str(), FILE_WRITE_ATTRIBUTES,
       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
@@ -76,7 +87,11 @@ bool CopyFileDates(const std::wstring& source_path,
   return write_succeeded != FALSE;
 }
 
-// 同じディレクトリに作った一時出力を移動し、既存 JPEG の置換も単一の Win32 操作へ収める
+/// 同じディレクトリの検証済み一時出力を単一の Win32 操作で確定する。
+/// @param staged_output_path 検証済み一時 JPEG の UTF-16 パス
+/// @param output_path 置き換える出力先の UTF-16 パス
+/// @param error_code 失敗時に Win32 エラーコードを書き込む有効なポインター
+/// @returns 一時出力を出力先へ移動できた場合は true
 bool ReplaceStagedOutputAtomically(const std::wstring& staged_output_path,
                                    const std::wstring& output_path,
                                    DWORD* error_code) {
@@ -104,11 +119,10 @@ bool FlutterWindow::OnCreate() {
 
   RECT frame = GetClientArea();
 
-  // The size here must match the window dimensions to avoid unnecessary surface
-  // creation / destruction in the startup path.
+  // 起動時の描画領域をウィンドウ寸法に合わせ、一度の生成で初期表示を準備する
   flutter_controller_ = std::make_unique<flutter::FlutterViewController>(
       frame.right - frame.left, frame.bottom - frame.top, project_);
-  // Ensure that basic setup of the controller was successful.
+  // エンジンとビューの両方が初期化できた場合にプラグインを登録する
   if (!flutter_controller_->engine() || !flutter_controller_->view()) {
     return false;
   }
@@ -149,6 +163,7 @@ bool FlutterWindow::OnCreate() {
           return;
         }
 
+        // メソッドごとの入力パスと共通の出力パスを取得する
         const auto source_iterator = arguments->find(flutter::EncodableValue(
             is_copy_file_dates_call ? "sourcePath" : "stagedOutputPath"));
         const auto output_iterator =
@@ -169,6 +184,7 @@ bool FlutterWindow::OnCreate() {
           return;
         }
 
+        // UTF-8 として有効なパスだけを Win32 のファイル操作へ渡す
         const std::wstring source_path = Utf8ToWide(*source_value);
         const std::wstring output_path = Utf8ToWide(*output_value);
         if (source_path.empty() || output_path.empty()) {
@@ -176,6 +192,7 @@ bool FlutterWindow::OnCreate() {
           return;
         }
 
+        // OS の失敗コードを Flutter へ返し、変換側で元画像を保持できるようにする
         DWORD error_code = ERROR_SUCCESS;
         if (is_copy_file_dates_call &&
             !CopyFileDates(source_path, output_path, &error_code)) {
@@ -203,15 +220,14 @@ bool FlutterWindow::OnCreate() {
     this->Show();
   });
 
-  // Flutter can complete the first frame before the "show window" callback is
-  // registered. The following call ensures a frame is pending to ensure the
-  // window is shown. It is a no-op if the first frame hasn't completed yet.
+  // 最初の描画がコールバック登録前に終わっていても、次の描画でウィンドウを表示する
   flutter_controller_->ForceRedraw();
 
   return true;
 }
 
 void FlutterWindow::OnDestroy() {
+  // チャネルを先に閉じてからエンジンとビューを解放する
   file_operations_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
@@ -224,7 +240,7 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
-  // Give Flutter, including plugins, an opportunity to handle window messages.
+  // プラグインを含む Flutter 側へ先にウィンドウメッセージを渡す
   if (flutter_controller_) {
     std::optional<LRESULT> result =
         flutter_controller_->HandleTopLevelWindowProc(hwnd, message, wparam,

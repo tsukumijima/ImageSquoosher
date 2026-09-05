@@ -15,11 +15,14 @@ import 'package:image_squoosher/ui/widgets/empty_drop_area.dart';
 import 'package:image_squoosher/ui/widgets/update_banner.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-/// ウィンドウ寸法の検証で利用者の保存設定を更新する必要がないため、保存だけをメモリ内で完結します。
+/// ウィンドウ寸法の検証で利用者の保存設定を更新するため、保存だけをメモリ内で完結するサービス。
 class _LayoutSettingsService extends SettingsService {
+  /// 一時ディレクトリを使って設定サービスを初期化する。
   _LayoutSettingsService() : super.forTesting(Directory.systemTemp);
 
   @override
+  /// 保存する設定を受け取る。
+  /// @param preferences 保存するアプリ設定
   Future<void> save(AppPreferences preferences) async {}
 }
 

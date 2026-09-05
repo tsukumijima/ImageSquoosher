@@ -27,8 +27,18 @@ import 'widgets/queue_header.dart';
 import 'widgets/queued_image_row.dart';
 import 'widgets/update_banner.dart';
 
-/// 画像の追加・設定・圧縮をまとめる画面です。
+/// 画像の追加・設定・圧縮をまとめる画面。
 class HomeScreen extends StatefulWidget {
+  /// 画像一覧と変換設定を受け取り、画面を初期化する。
+  /// @param key ウィジェットを識別するキー
+  /// @param initialPreferences 起動時に適用する設定
+  /// @param settingsService 設定の読み書きに使うサービス
+  /// @param onLanguageChanged 表示言語の変更を親へ通知するコールバック
+  /// @param controller 変換キュー。省略時は画面内で生成する
+  /// @param onExitRequested 設定保存後の終了処理
+  /// @param checkForUpdatesOnInitialize 起動時に更新確認を行うか
+  /// @param initializePlatformServices Finder Sync などのプラットフォーム処理を初期化するか
+  /// @param enableDropTarget ドロップ領域を有効にするか。
   const HomeScreen({
     super.key,
     required this.initialPreferences,
@@ -52,6 +62,8 @@ class HomeScreen extends StatefulWidget {
   final bool initializePlatformServices;
   final bool enableDropTarget;
 
+  /// StatefulWidget の状態を生成する。
+  /// @returns ホーム画面の状態
   @override
   State<HomeScreen> createState() => HomeScreenState();
 }
@@ -97,7 +109,7 @@ class HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  /// 保存設定、Finder 選択、更新情報を並行して初期画面へ取り込みます。
+  /// 保存設定、Finder 選択、更新情報を初期画面へ取り込む。
   Future<void> _initialize() async {
     await _controller.updateOutputPlans(_preferences.conversionSettings);
     const debugFiles = String.fromEnvironment('IMAGE_SQUOOSHER_DEBUG_FILES');
@@ -120,7 +132,7 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Finder 拡張から届く選択を、外部からの明示的な置き換えとして扱います。
+  /// Finder 拡張から届く選択を、外部からの明示的な置き換えとして扱う。
   void _listenForFinderSelection() {
     _finderMethodChannel.setMethodCallHandler((call) async {
       if (call.method != 'finderSelectedImageURLs') {
@@ -141,7 +153,7 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// 起動時の Finder 選択を取得し、先行イベントがあれば新しい選択を維持します。
+  /// 起動時の Finder 選択を取得し、先行イベントがあれば新しい選択を維持する。
   Future<void> _loadFinderSelection() async {
     try {
       final value = await _finderMethodChannel.invokeMethod<dynamic>('getFinderSelectedImageURLs');
@@ -161,7 +173,8 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Finder Sync の有効状態をメニューの次の操作へ反映します。
+  /// Finder Sync の有効状態をメニューの次の操作へ反映する。
+  /// @param l10n Finder Sync の状態取得に使う表示情報
   Future<void> _loadFinderSyncStatus() async {
     try {
       final isEnabled = await _finderMethodChannel.invokeMethod<bool>('isFinderSyncExtensionEnabled');
@@ -180,7 +193,7 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// パッケージ情報から配布物と同じバージョン表記を取得します。
+  /// パッケージ情報から配布物と同じバージョン表記を取得する。
   Future<void> _loadApplicationVersion() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
@@ -197,7 +210,7 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// コントローラーの変更を画面へ反映します。
+  /// コントローラーの変更を画面へ反映する。
   void _refresh() {
     if (mounted) {
       // 完了メッセージが元の変換件数を読み取った後、次の描画で保留中の選択を取り込む
@@ -215,7 +228,7 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// ネイティブのファイル選択画面から画像を取得します。
+  /// ネイティブのファイル選択画面から画像を取得する。
   Future<void> _addFiles() async {
     final l10n = AppLocalizations.of(context);
     try {
@@ -235,7 +248,8 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 選択画面で選んだ画像を既存のキューへ追加します。
+  /// 選択画面で選んだ画像を既存のキューへ追加する。
+  /// @param paths 選択画面から受け取ったファイルパス
   void _addSelectedFiles(Iterable<String> paths) {
     final supportedPaths = _supportedPaths(paths).toList();
     // 対応形式が含まれていない場合は、選べる形式を案内する
@@ -252,14 +266,17 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Finder または置き換え操作で渡された画像だけをキューへ残します。
+  /// Finder または置き換え操作で渡された画像だけをキューへ残す。
+  /// @param paths 置き換え対象のファイルパス
   void _replaceFiles(Iterable<String> paths) {
     final supportedPaths = _supportedPaths(paths);
     _controller.replaceFiles(supportedPaths);
     _controller.updateOutputPlans(_preferences.conversionSettings);
   }
 
-  /// 許可された静止画形式だけを画像パイプラインへ渡します。
+  /// 許可された静止画形式だけを画像パイプラインへ渡す。
+  /// @param paths 検査対象のファイルパス
+  /// @returns 対応形式のファイルパス
   Iterable<String> _supportedPaths(Iterable<String> paths) {
     return paths.where((path) {
       final lowerPath = path.toLowerCase();
@@ -270,7 +287,8 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// 常時表示するフォームの変更を保存し、出力予定と表示言語へすぐ反映します。
+  /// 常時表示するフォームの変更を保存し、出力予定と表示言語へすぐ反映する。
+  /// @param preferences 保存するアプリ設定
   void _savePreferences(AppPreferences preferences) {
     setState(() => _preferences = preferences);
     unawaited(_controller.updateOutputPlans(preferences.conversionSettings));
@@ -279,7 +297,7 @@ class HomeScreenState extends State<HomeScreen> {
     _saveTimer = Timer(const Duration(milliseconds: 250), _queuePreferencesSave);
   }
 
-  /// 連続したフォーム入力では最後の状態だけを直列に保存します。
+  /// 連続したフォーム入力では最後の状態だけを直列に保存する。
   void _queuePreferencesSave() {
     _saveTail = _saveTail.then((_) => widget.settingsService.save(_preferences)).catchError((
       Object error,
@@ -294,7 +312,7 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// 終了と変換開始の直前に、待機中の設定保存を完了させます。
+  /// 終了と変換開始の直前に、待機中の設定保存を完了させる。
   Future<void> _flushPreferences() async {
     if (_saveTimer?.isActive ?? false) {
       _saveTimer!.cancel();
@@ -303,14 +321,14 @@ class HomeScreenState extends State<HomeScreen> {
     await _saveTail;
   }
 
-  /// 言語と現在のウィンドウ寸法は保ち、変換条件だけを既定値へ戻します。
+  /// 言語と現在のウィンドウ寸法は保ち、変換条件だけを既定値へ戻す。
   void _restoreDefaults() {
     _savePreferences(
       _preferences.copyWith(conversionSettings: const ConversionSettings()),
     );
   }
 
-  /// 変換を開始し、完了・失敗・停止の要約を画面下部へ表示します。
+  /// 変換を開始し、完了・失敗・停止の要約を画面下部へ表示する。
   Future<void> _startCompression() async {
     // キーボードから開始した場合も数値欄の編集を終え、実効設定を表示する
     FocusManager.instance.primaryFocus?.unfocus();
@@ -353,7 +371,7 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 一覧見出しの操作で、登録済み画像をすべて外します。
+  /// 一覧見出しの操作で、登録済み画像をすべて外す。
   void _clearFiles() {
     if (_controller.images.isEmpty) {
       return;
@@ -362,7 +380,7 @@ class HomeScreenState extends State<HomeScreen> {
     _showMessage(AppLocalizations.of(context).clearConfirmation);
   }
 
-  /// Esc とアプリ層からの閉じる操作を、停止または設定保存後の終了へ分岐します。
+  /// Esc とアプリ層からの閉じる操作を、停止または設定保存後の終了へ分岐する。
   Future<void> handleWindowClose() async {
     if (_controller.isCompressing) {
       _requestStop();
@@ -372,12 +390,12 @@ class HomeScreenState extends State<HomeScreen> {
     await widget.onExitRequested?.call();
   }
 
-  /// 停止要求を受けると、現在の画像を完了した境界で圧縮を終了します。
+  /// 停止要求を受けると、現在の画像を完了した境界で圧縮を終了する。
   void _requestStop() {
     _controller.requestStop();
   }
 
-  /// メニューからの更新確認結果を画面へ反映します。
+  /// メニューからの更新確認結果を画面へ反映する。
   Future<void> _checkForUpdates() async {
     final l10n = AppLocalizations.of(context);
     _showMessage(l10n.checkingUpdates);
@@ -397,7 +415,7 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Finder Sync のシステム設定画面を開きます。
+  /// Finder Sync のシステム設定画面を開く。
   Future<void> _openFinderSettings() async {
     try {
       await _finderMethodChannel.invokeMethod<void>('showFinderSyncExtensionManagement');
@@ -413,10 +431,12 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// システム設定から戻ったときに Finder Sync の有効状態を読み直します。
+  /// システム設定から戻ったときに Finder Sync の有効状態を読み直す。
+  /// @returns Finder Sync 状態の読み込み完了を表す Future
   Future<void> refreshFinderSyncStatus() => _loadFinderSyncStatus();
 
-  /// 出力先のフォルダを標準ファイルマネージャーで開きます。
+  /// 出力先のフォルダを標準ファイルマネージャーで開く。
+  /// @param queuedImage 出力先を開く対象のキュー画像
   Future<void> _openOutputFolder(QueuedImage queuedImage) async {
     final outputPath = queuedImage.outputPath ?? queuedImage.path;
     try {
@@ -436,7 +456,9 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// カードの元画像と操作ボタンの出力画像を、それぞれ既定のアプリケーションで開きます。
+  /// カードの元画像と操作ボタンの出力画像を、それぞれ既定のアプリケーションで開く。
+  /// @param queuedImage 開く対象のキュー画像
+  /// @param isSource 元画像を開く場合は true、出力画像を開く場合は false
   Future<void> _openImageFile(QueuedImage queuedImage, {required bool isSource}) async {
     final path = isSource ? queuedImage.path : queuedImage.outputPath;
     if (path == null) {
@@ -459,14 +481,18 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 通知を1箇所へ集め、画面が有効な間だけ `ScaffoldMessenger` で表示します。
+  /// 通知を1箇所へ集め、画面が有効な間だけ `ScaffoldMessenger` で表示する。
+  /// @param message 表示する通知文
+  /// @param kind 通知の表示種別
   void _showMessage(String message, {AppNoticeKind kind = AppNoticeKind.info}) {
     if (mounted) {
       showAppSnackBar(context, message, kind: kind);
     }
   }
 
-  /// プラットフォームチャネルの文字列配列だけを画面入力として受け付けます。
+  /// プラットフォームチャネルの文字列配列だけを画面入力として受け付ける。
+  /// @param value プラットフォームチャネルから受け取った値
+  /// @returns 有効なファイルパスの一覧
   List<String> _pathsFromPlatformValue(dynamic value) {
     if (value is! List) {
       return const <String>[];
@@ -474,6 +500,9 @@ class HomeScreenState extends State<HomeScreen> {
     return value.whereType<String>().toList();
   }
 
+  /// ホーム画面を構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns ホーム画面のウィジェット
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -518,7 +547,9 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// ドロップ操作の有無にかかわらず共通の画面本体を構成します。
+  /// ドロップ操作の有無にかかわらず共通の画面本体を構成する。
+  /// @param l10n 現在の表示言語のローカライズ情報
+  /// @returns ホーム画面本体のウィジェット
   Widget _buildBody(AppLocalizations l10n) {
     return Container(
       decoration: getGradientBackground(context),
@@ -602,7 +633,8 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// ヘッダーメニューの操作を実行します。
+  /// ヘッダーメニューの操作を実行する。
+  /// @param action 実行するメニュー操作
   void _handleMenuAction(HomeMenuAction action) {
     final l10n = AppLocalizations.of(context);
     switch (action) {

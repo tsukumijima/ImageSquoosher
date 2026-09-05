@@ -6,10 +6,13 @@ import 'package:flutter/material.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../theme.dart';
 
-/// 通知の意味に応じた表示種別です。
+/// 通知の意味に応じた表示種別。
 enum AppNoticeKind { info, success, error }
 
-/// 新しい操作結果を優先して表示し、短い間隔の操作でも通知を読み取れるようにします。
+/// 新しい操作結果を優先して表示し、短い間隔の操作でも通知を読み取れるようにする。
+/// @param context 通知を表示する BuildContext
+/// @param message 表示する通知文
+/// @param kind 通知の表示種別
 void showAppSnackBar(BuildContext context, String message, {AppNoticeKind kind = AppNoticeKind.info}) {
   final color = switch (kind) {
     AppNoticeKind.info => AppColors.info,

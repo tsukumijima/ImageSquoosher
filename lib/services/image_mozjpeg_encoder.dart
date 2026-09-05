@@ -4,21 +4,27 @@ import 'dart:typed_data';
 
 import 'image_pipeline_types.dart';
 
-/// バンドル済み MozJPEG の `cjpeg` を実行するエンコーダーです。
-///
-/// Rust や FFI を介さず、標準入力の代わりに一時 PPM を明示的に渡します。
-/// 大きい画像をパイプへ一括送信したときのバックプレッシャーを避けつつ、失敗時に再現しやすい入力を作れます。
+/// バンドル済み MozJPEG の `cjpeg` を実行するエンコーダー。
+/// Rust や FFI を介さず、標準入力の代わりに一時 PPM を明示的に渡す。
+/// 大きい画像をパイプへ一括送信したときのバックプレッシャーを避けつつ、失敗時に再現しやすい入力を作る。
 class MozJpegEncoder {
-  /// エンコーダーを作成します。
+  /// エンコーダーを作成する。
+  /// @param executable 実行する `cjpeg` のファイル
   const MozJpegEncoder(this.executable);
 
-  /// 実行する `cjpeg` です。
+  /// 実行する `cjpeg` のファイル。
   final File executable;
 
-  /// [rgbBytes] を progressive JPEG として [outputFile] へ生成します。
-  ///
-  /// [temporaryDirectory] は出力先と同じボリュームに作成します。
-  /// 完成前のファイルをこのディレクトリだけに置き、検証済みの出力だけを公開します。
+  /// [rgbBytes] を progressive JPEG として [outputFile] へ生成する。
+  /// [temporaryDirectory] は出力先と同じボリュームに置き、完成前のファイルをそこへ限定する。
+  /// @param width 入力画像の横幅
+  /// @param height 入力画像の高さ
+  /// @param rgbBytes 左上から右下へ並ぶ 8bit RGB 配列
+  /// @param quality JPEG の画質を 1 から 100 で指定する値
+  /// @param outputFile ステージ済み JPEG の出力先
+  /// @param temporaryDirectory PPM と ICC プロファイルを置く一時ディレクトリ
+  /// @param iccProfileBytes 埋め込む ICC プロファイル (省略時は埋め込まない)
+  /// @param onProgress エンコード進捗を 0.0 から 1.0 で受け取る処理
   Future<void> encode({
     required int width,
     required int height,
@@ -109,7 +115,11 @@ class MozJpegEncoder {
     onProgress?.call(1.0);
   }
 
-  /// PPM P6 は RGB バイト列を加工せず `cjpeg` へ渡せる最小の中間形式です。
+  /// RGB バイト列を加工せず `cjpeg` へ渡せる PPM P6 ファイルを書き込む。
+  /// @param file 書き込み先の PPM ファイル
+  /// @param width 画像の横幅
+  /// @param height 画像の高さ
+  /// @param rgbBytes 左上から右下へ並ぶ 8bit RGB 配列
   static Future<void> _writePpm(File file, int width, int height, Uint8List rgbBytes) async {
     final sink = file.openWrite();
     sink.add(ascii.encode('P6\n$width $height\n255\n'));

@@ -1,26 +1,31 @@
-/// セマンティックバージョンの比較ユーティリティ
+/// セマンティックバージョンの比較ユーティリティ。
 library;
 
-/// 比較に必要な3要素を持つセマンティックバージョン
+/// 比較に必要な3要素を持つセマンティックバージョン。
 class SemanticVersion implements Comparable<SemanticVersion> {
   /// 比較対象の3要素と元の文字列を保持する。
+  /// @param major メジャーバージョン番号
+  /// @param minor マイナーバージョン番号
+  /// @param patch パッチバージョン番号
+  /// @param raw 入力された元のバージョン文字列
   const SemanticVersion({required this.major, required this.minor, required this.patch, required this.raw});
 
-  /// メジャーバージョン
+  /// メジャーバージョン番号。
   final int major;
 
-  /// マイナーバージョン
+  /// マイナーバージョン番号。
   final int minor;
 
-  /// パッチバージョン
+  /// パッチバージョン番号。
   final int patch;
 
-  /// 入力された元のバージョン文字列
+  /// 入力された元のバージョン文字列。
   final String raw;
 
   /// `1.2.3` または `v1.2.3` 形式の文字列を解析する。
-  ///
-  /// プレリリースとビルドメタデータは比較対象の3要素から除外する。
+  /// プレリリースとビルドメタデータを比較対象の3要素から除外する。
+  /// @param versionString 解析するバージョン文字列
+  /// @returns 解析したバージョン (形式が不正なら null)
   static SemanticVersion? tryParse(String versionString) {
     var normalized = versionString.trim();
     if (normalized.toLowerCase().startsWith('v')) {
@@ -50,6 +55,8 @@ class SemanticVersion implements Comparable<SemanticVersion> {
   }
 
   /// メジャー、マイナー、パッチの順に比較する。
+  /// @param other 比較対象のバージョン
+  /// @returns this が新しければ正、古ければ負、同じなら 0
   @override
   int compareTo(SemanticVersion other) {
     if (major != other.major) {
@@ -62,19 +69,28 @@ class SemanticVersion implements Comparable<SemanticVersion> {
   }
 
   /// 対象のバージョンより新しいかを判定する。
+  /// @param other 比較対象のバージョン
+  /// @returns this が新しい場合は true
   bool isNewerThan(SemanticVersion other) => compareTo(other) > 0;
 
   /// 対象のバージョンより古いかを判定する。
+  /// @param other 比較対象のバージョン
+  /// @returns this が古い場合は true
   bool isOlderThan(SemanticVersion other) => compareTo(other) < 0;
 
   /// 対象のバージョンと同じかを判定する。
+  /// @param other 比較対象のバージョン
+  /// @returns 3要素が同じ場合は true
   bool isSameAs(SemanticVersion other) => compareTo(other) == 0;
 
   /// 正規化した3要素を文字列として返す。
+  /// @returns `major.minor.patch` 形式の文字列
   @override
   String toString() => '$major.$minor.$patch';
 
   /// 比較対象の3要素が同じ場合に等価と判定する。
+  /// @param other 比較対象のオブジェクト
+  /// @returns 3要素が同じ SemanticVersion の場合は true
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
@@ -82,14 +98,15 @@ class SemanticVersion implements Comparable<SemanticVersion> {
   }
 
   /// 比較対象の3要素からハッシュ値を生成する。
+  /// @returns 3要素に基づくハッシュ値
   @override
   int get hashCode => Object.hash(major, minor, patch);
 }
 
 /// 2つのバージョン文字列を比較する。
-///
-/// [firstVersionString] が新しい場合は正の値、[secondVersionString] が新しい場合は負の値、同じ場合は0を返す。
-/// いずれかを解析できない場合は null を返す。
+/// @param firstVersionString 比較する1つ目のバージョン文字列
+/// @param secondVersionString 比較する2つ目のバージョン文字列
+/// @returns 1つ目が新しければ正、古ければ負、同じなら 0 (不正な文字列があれば null)
 int? compareVersions(String firstVersionString, String secondVersionString) {
   final firstVersion = SemanticVersion.tryParse(firstVersionString);
   final secondVersion = SemanticVersion.tryParse(secondVersionString);
@@ -100,6 +117,9 @@ int? compareVersions(String firstVersionString, String secondVersionString) {
 }
 
 /// [latestVersion] が [currentVersion] より新しいかを判定する。
+/// @param currentVersion 現在のバージョン文字列
+/// @param latestVersion 比較する最新バージョン文字列
+/// @returns 最新バージョンが解析でき、現在のバージョンより新しければ true
 bool isNewerVersionAvailable(String currentVersion, String latestVersion) {
   final current = SemanticVersion.tryParse(currentVersion);
   final latest = SemanticVersion.tryParse(latestVersion);

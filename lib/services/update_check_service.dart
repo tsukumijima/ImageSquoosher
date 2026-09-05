@@ -1,4 +1,4 @@
-/// GitHub Releases を確認する更新通知サービス
+/// GitHub Releases を確認する更新通知サービス。
 library;
 
 import 'dart:async';
@@ -11,8 +11,14 @@ import '../models/github_release.dart';
 import '../utils/version_utils.dart';
 import 'logging_service.dart';
 
-/// 更新確認の結果
+/// 更新確認の結果。
 class UpdateCheckResult {
+  /// 更新確認結果を作成する。
+  /// @param isUpdateAvailable 新しいバージョンが利用できるかどうか
+  /// @param currentVersion 実行中のアプリケーションバージョン
+  /// @param latestVersion 最新リリースのバージョン
+  /// @param latestRelease 最新リリースの情報
+  /// @param errorMessage 更新確認に失敗した場合のエラーメッセージ
   const UpdateCheckResult({
     required this.isUpdateAvailable,
     required this.currentVersion,
@@ -21,25 +27,27 @@ class UpdateCheckResult {
     this.errorMessage,
   });
 
-  /// 新しいバージョンが利用できるか
+  /// 新しいバージョンが利用できるかどうか。
   final bool isUpdateAvailable;
 
-  /// 実行中のアプリケーションバージョン
+  /// 実行中のアプリケーションバージョン。
   final String currentVersion;
 
-  /// 最新リリースのバージョン
+  /// 最新リリースのバージョン。
   final String? latestVersion;
 
-  /// 最新リリースの情報
+  /// 最新リリースの情報。
   final GitHubRelease? latestRelease;
 
-  /// 更新確認に失敗した場合のエラーメッセージ
+  /// 更新確認に失敗した場合のエラーメッセージ。
   final String? errorMessage;
 
   /// 更新確認が成功したかを判定する。
+  /// @returns エラーがない場合は `true`
   bool get isSuccess => errorMessage == null;
 
   /// UI が参照するリリースページの URL を取得する。
+  /// @returns 最新リリースの URL。取得できない場合は `null`
   String? get releaseURL => latestRelease?.htmlURL;
 }
 
@@ -48,20 +56,28 @@ class UpdateCheckService {
   /// アプリ全体で共有する更新確認サービスを作成する。
   UpdateCheckService._();
 
-  /// アプリ全体で共有するシングルトンインスタンス
+  /// アプリ全体で共有するシングルトンインスタンス。
   static final UpdateCheckService instance = UpdateCheckService._();
 
-  /// ImageSquoosher の最新リリースを取得する GitHub API エンドポイント
+  /// ImageSquoosher の最新リリースを取得する GitHub API エンドポイント。
   static const _releaseEndpoint = 'https://api.github.com/repos/tsukumijima/ImageSquoosher/releases/latest';
 
+  /// 更新確認のログ出力先。
   final LoggingService _log = LoggingService.instance;
+
+  /// 最新の更新確認結果。
   UpdateCheckResult? _cachedResult;
+
+  /// 多重実行中の確認を共有する完了通知。
   Completer<UpdateCheckResult>? _checkCompleter;
 
   /// キャッシュされた更新確認結果を取得する。
+  /// @returns キャッシュされた結果。未確認の場合は `null`
   UpdateCheckResult? get cachedResult => _cachedResult;
 
   /// GitHub の最新リリースを取得し、進行中の確認があれば同じ結果を待つ。
+  /// @param force キャッシュを無視して確認するかどうか
+  /// @returns 更新確認の結果
   Future<UpdateCheckResult> check({bool force = false}) async {
     if (force == false && _cachedResult != null) {
       _log.debug('Returning cached update check result.', tag: 'Update');
@@ -96,6 +112,7 @@ class UpdateCheckService {
   }
 
   /// PackageInfo のバージョンと GitHub の最新リリースを比較する。
+  /// @returns 更新確認の結果
   Future<UpdateCheckResult> _performUpdateCheck() async {
     final currentVersion = await _loadCurrentVersion();
     final response = await http
@@ -136,6 +153,7 @@ class UpdateCheckService {
   }
 
   /// パッケージ情報から実行中のアプリケーションバージョンを取得する。
+  /// @returns アプリケーションバージョン。取得失敗時は `unknown`
   Future<String> _loadCurrentVersion() async {
     try {
       return (await PackageInfo.fromPlatform()).version;

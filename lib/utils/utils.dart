@@ -1,4 +1,4 @@
-/// ユーティリティ層のバレルファイル
+/// ユーティリティ層のバレルファイル。
 library;
 
 export 'lanczos_resizer.dart';

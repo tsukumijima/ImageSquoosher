@@ -1,4 +1,4 @@
-/// GitHub Releases API のレスポンスモデル
+/// GitHub Releases API のレスポンスモデル。
 library;
 
 import 'package:json_annotation/json_annotation.dart';
@@ -8,7 +8,14 @@ part 'github_release.g.dart';
 /// 更新確認に必要な GitHub Release 情報を保持する。
 @JsonSerializable()
 class GitHubRelease {
-  /// GitHub API が返す更新確認用のフィールドを保持する。
+  /// GitHub API の更新確認用フィールドを保持する。
+  /// @param tagName リリースのタグ名
+  /// @param htmlURL リリースページの URL
+  /// @param name リリース名
+  /// @param body Markdown 形式のリリースノート
+  /// @param isDraft ドラフトリリースかどうか
+  /// @param isPrerelease プレリリースかどうか
+  /// @param publishedAt 公開日時
   GitHubRelease({
     required this.tagName,
     required this.htmlURL,
@@ -33,11 +40,11 @@ class GitHubRelease {
   /// Markdown 形式のリリースノート
   final String? body;
 
-  /// ドラフトリリースか
+  /// ドラフトリリースかどうか
   @JsonKey(name: 'draft', defaultValue: false)
   final bool isDraft;
 
-  /// プレリリースか
+  /// プレリリースかどうか
   @JsonKey(name: 'prerelease', defaultValue: false)
   final bool isPrerelease;
 
@@ -46,17 +53,22 @@ class GitHubRelease {
   final String? publishedAt;
 
   /// JSON からリリース情報を復元する。
+  /// @param json GitHub API のレスポンス
+  /// @returns 復元したリリース情報
   factory GitHubRelease.fromJson(Map<String, dynamic> json) => _$GitHubReleaseFromJson(json);
 
   /// JSON へ保存できる値へ変換する。
+  /// @returns JSON オブジェクト
   Map<String, dynamic> toJson() => _$GitHubReleaseToJson(this);
 
   /// タグ名から先頭の `v` を除いたバージョンを取得する。
+  /// @returns 正規化したバージョン文字列
   String get version {
     final normalizedTag = tagName.trim();
     return normalizedTag.toLowerCase().startsWith('v') ? normalizedTag.substring(1) : normalizedTag;
   }
 
   /// リリース名が省略されている場合も表示できる名前を取得する。
+  /// @returns 表示に使うリリース名
   String get displayName => name ?? tagName;
 }

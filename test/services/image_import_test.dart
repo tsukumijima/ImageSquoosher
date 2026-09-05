@@ -18,6 +18,8 @@ void main() {
   });
   tearDown(() async => directory.delete(recursive: true));
 
+  /// 画像詳細の非同期検査が完了するまで待機する。
+  /// @param controller 詳細検査の状態を保持するコントローラー
   Future<void> waitForDetails(SquoosherController controller) async {
     final deadline = DateTime.now().add(const Duration(seconds: 5));
     while (controller.images.any((entry) => entry.sourceDimensions == null && entry.isInputValid)) {
@@ -110,10 +112,17 @@ void main() {
   });
 }
 
-/// 実エンコーダーを動かす直前に、入力情報が全件そろっていることを確認するエンジンです。
+/// 実エンコーダーを動かす直前に、入力情報が全件そろっていることを確認するエンジン。
 class _InspectionEngine implements ImageCompressionEngine {
   CompressionRequest? request;
 
+  /// 変換要求を記録し、空の結果を返す。
+  /// @param request 入力情報がそろった変換リクエスト
+  /// @param stopToken 停止要求を確認するトークン
+  /// @param onItemStarted 画像ごとの開始通知
+  /// @param onItemCompleted 画像ごとの完了通知
+  /// @param onItemFailed 画像ごとの失敗通知
+  /// @returns 空の変換結果
   @override
   Future<ImageBatchConversionResult> compress(
     CompressionRequest request, {

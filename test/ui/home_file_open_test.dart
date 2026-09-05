@@ -11,8 +11,10 @@ import 'package:image_squoosher/ui/home_screen.dart';
 import 'package:image_squoosher/ui/theme.dart';
 import 'package:image_squoosher/ui/widgets/queued_image_row.dart';
 
-/// 入出力パスを固定し、ファイルを開く画面操作へ画像を提供します。
+/// 入出力パスを固定し、ファイルを開く画面操作へ画像を提供する。
 class _FileOpenController extends SquoosherController {
+  /// 指定したキュー画像を使ってコントローラーを初期化する。
+  /// @param queuedImage 開く操作の対象にするキュー画像
   _FileOpenController(this.queuedImage);
 
   final QueuedImage queuedImage;

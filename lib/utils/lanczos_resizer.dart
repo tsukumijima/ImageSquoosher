@@ -2,21 +2,23 @@ import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-/// Lanczos3 でリサイズする線形 RGB 画像です。
-///
-/// [linearRgb] は左上から右下へ走査した 0.0 から 1.0 の RGB 値で、長さは必ず `width * height * 3` です。
-/// 線形値を使うと暗部の寄与も光量として扱えるため、縮小後も画像の明るさを保てます。
+/// Lanczos3 でリサイズする線形 RGB 画像。
+/// [linearRgb] は左上から右下へ走査した 0.0 から 1.0 の RGB 値で、長さは `width * height * 3` とする。
+/// 線形値で畳み込み、縮小後の画像でも光量としての明るさを保つ。
 class LanczosLinearRgbImage {
-  /// 画像の横幅です。
+  /// 画像の横幅。
   final int width;
 
-  /// 画像の高さです。
+  /// 画像の高さ。
   final int height;
 
-  /// ピクセルごとの線形 RGB 値です。
+  /// ピクセルごとの線形 RGB 値。
   final Float32List linearRgb;
 
-  /// 線形 RGB 画像を作成します。
+  /// 線形 RGB 画像を作成する。
+  /// @param width 画像の横幅
+  /// @param height 画像の高さ
+  /// @param linearRgb 左上から右下へ並ぶ線形 RGB 配列
   LanczosLinearRgbImage({
     required this.width,
     required this.height,
@@ -38,7 +40,8 @@ class LanczosLinearRgbImage {
     }
   }
 
-  /// `cjpeg` の PPM 入力へ渡す 8bit sRGB 値へ変換します。
+  /// `cjpeg` の PPM 入力へ渡す 8bit sRGB 値へ変換する。
+  /// @returns 左上から右下へ並ぶ 8bit sRGB 配列
   Uint8List toSrgbBytes() {
     final srgbBytes = Uint8List(linearRgb.length);
     for (var index = 0; index < linearRgb.length; index += 1) {
@@ -48,9 +51,11 @@ class LanczosLinearRgbImage {
   }
 }
 
-/// sRGB と線形 RGB を往復する色空間変換です。
+/// sRGB と線形 RGB を相互変換する色空間変換。
 class SrgbColorSpace {
-  /// 8bit sRGB の正規化値を線形 RGB へ変換します。
+  /// 8bit sRGB の正規化値を線形 RGB へ変換する。
+  /// @param srgb 0.0 から 1.0 の sRGB 値
+  /// @returns 0.0 から 1.0 の線形 RGB 値
   static double toLinear(double srgb) {
     final normalized = srgb.clamp(0.0, 1.0);
     if (normalized <= 0.04045) {
@@ -59,7 +64,9 @@ class SrgbColorSpace {
     return math.pow((normalized + 0.055) / 1.055, 2.4).toDouble();
   }
 
-  /// 線形 RGB の正規化値を sRGB へ変換します。
+  /// 線形 RGB の正規化値を sRGB へ変換する。
+  /// @param linear 0.0 から 1.0 の線形 RGB 値
+  /// @returns 0.0 から 1.0 の sRGB 値
   static double fromLinear(double linear) {
     final normalized = linear.clamp(0.0, 1.0);
     if (normalized <= 0.0031308) {
@@ -68,24 +75,28 @@ class SrgbColorSpace {
     return 1.055 * math.pow(normalized, 1.0 / 2.4).toDouble() - 0.055;
   }
 
-  /// 線形 RGB を PPM 用の 8bit sRGB 値へ丸めます。
+  /// 線形 RGB を PPM 用の 8bit sRGB 値へ丸める。
+  /// @param linear 0.0 から 1.0 の線形 RGB 値
+  /// @returns 0 から 255 の 8bit 値
   static int toByte(double linear) {
     return (fromLinear(linear) * 255.0).round().clamp(0, 255).toInt();
   }
 }
 
-/// Piston と Squoosh が用いるものと同じ、半径 3 の Lanczos 窓関数です。
-///
-/// 水平・垂直を分けて畳み込むことで、2次元の36サンプル計算を2回の1次元計算に減らします。
-/// 縮小時は窓を広げて事前に低域通過するため、細かい模様の折り返しを抑えながら輪郭を保ちます。
+/// Piston と Squoosh が用いる、半径 3 の Lanczos 窓関数によるリサイズ処理。
+/// 水平と垂直を分けて畳み込み、2次元の計算を2回の1次元計算へ分けて計算量を減らす。
+/// 縮小時は窓を広げて低域通過するため、細かい模様の折り返しを抑えながら輪郭を保つ。
 class LanczosResizer {
-  /// Lanczos3 の窓半径です。
+  /// Lanczos3 の窓半径。
   static const double _radius = 3.0;
 
-  /// [source] を指定した解像度へ同期的にリサイズします。
-  ///
-  /// 小さい画像の検証やワーカー [Isolate] 内で利用します。
-  /// 画面の操作を継続する経路は [resizeInIsolate] を使います。
+  /// [source] を指定した解像度へ同期的にリサイズする。
+  /// 小さい画像の検証やワーカー [Isolate] 内で利用する。
+  /// 画面の操作を継続する呼び出し元は [resizeInIsolate()] を使う。
+  /// @param source リサイズ元の線形 RGB 画像
+  /// @param width 出力画像の横幅
+  /// @param height 出力画像の高さ
+  /// @returns 指定解像度の線形 RGB 画像
   static LanczosLinearRgbImage resize(
     LanczosLinearRgbImage source, {
     required int width,
@@ -155,10 +166,12 @@ class LanczosResizer {
     return LanczosLinearRgbImage(width: width, height: height, linearRgb: output);
   }
 
-  /// [source] を別 Isolate でリサイズします。
-  ///
-  /// フィルター計算は Dart の CPU を長く占有するため、Flutter の描画 [Isolate] から切り離します。
-  /// 戻り値は転送可能な数値とバイト列だけで構成されています。
+  /// [source] を別 [Isolate] でリサイズする。
+  /// フィルター計算を Flutter の描画 [Isolate] から切り離し、転送可能な数値とバイト列で結果を返す。
+  /// @param source リサイズ元の線形 RGB 画像
+  /// @param width 出力画像の横幅
+  /// @param height 出力画像の高さ
+  /// @returns 指定解像度の線形 RGB 画像を返す Future
   static Future<LanczosLinearRgbImage> resizeInIsolate(
     LanczosLinearRgbImage source, {
     required int width,
@@ -169,7 +182,10 @@ class LanczosResizer {
     );
   }
 
-  /// 各出力座標へ寄与する入力画素と重みを作成します。
+  /// 各出力座標へ寄与する入力画素と正規化済みの重みを作成する。
+  /// @param sourceLength 入力軸の画素数
+  /// @param targetLength 出力軸の画素数
+  /// @returns 出力座標ごとの寄与情報
   static List<_Contributions> _createContributions(
     int sourceLength,
     int targetLength,
@@ -220,7 +236,9 @@ class LanczosResizer {
     }, growable: false);
   }
 
-  /// Lanczos3 の標本値を返します。
+  /// Lanczos3 の標本値を返す。
+  /// @param distance 標本中心からの距離
+  /// @returns 指定位置の Lanczos 係数
   static double _lanczos(double distance) {
     final absoluteDistance = distance.abs();
     if (absoluteDistance < 0.0000001) {
@@ -234,23 +252,26 @@ class LanczosResizer {
   }
 }
 
-/// 1出力画素へ寄与する入力画素群です。
+/// 1出力画素へ寄与する入力画素群。
 class _Contributions {
-  /// 係数を作成します。
+  /// 係数を作成する。
+  /// @param taps 入力画素と重みの組
   const _Contributions(this.taps);
 
-  /// 入力画素と正規化済みの重みです。
+  /// 入力画素と正規化済みの重み。
   final List<_Tap> taps;
 }
 
-/// 畳み込み係数の1要素です。
+/// 畳み込み係数の1要素。
 class _Tap {
-  /// 係数を作成します。
+  /// 係数を作成する。
+  /// @param index 入力画素の位置
+  /// @param weight 出力画素への寄与率
   const _Tap({required this.index, required this.weight});
 
-  /// 入力画素の位置です。
+  /// 入力画素の位置。
   final int index;
 
-  /// 出力画素への寄与率です。
+  /// 出力画素への寄与率。
   final double weight;
 }

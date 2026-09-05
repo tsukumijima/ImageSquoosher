@@ -4,7 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
-/// 操作のアクセント色と独立した、結果の意味を伝える色です。
+/// 操作のアクセント色と独立した、結果の意味を伝える色。
 abstract final class AppColors {
   static const success = Color(0xff4caf50);
   static const error = Color(0xffff5252);
@@ -12,6 +12,8 @@ abstract final class AppColors {
 }
 
 /// OS のアクセント色と α Import Utility のタイポグラフィを使うテーマを作成する。
+/// @param accentColor OS が提供するアクセント色
+/// @returns アプリ全体で使うダークテーマ
 ThemeData buildAppTheme(Color accentColor) {
   const fontFamilyFallback = <String>['Hiragino Sans', 'Noto Sans JP', 'Noto Sans CJK JP'];
   final colorScheme = ColorScheme.fromSeed(
@@ -249,7 +251,9 @@ ThemeData buildAppTheme(Color accentColor) {
   );
 }
 
-/// α Import Utility と同じ階調で、ツール画面の奥行きを作る背景です。
+/// α Import Utility と同じ階調で、ツール画面の奥行きを作る背景。
+/// @param context 現在のテーマを取得する BuildContext
+/// @returns テーマの表面色から作った背景装飾
 BoxDecoration getGradientBackground(BuildContext context) {
   final colorScheme = Theme.of(context).colorScheme;
   return BoxDecoration(

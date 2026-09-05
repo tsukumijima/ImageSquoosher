@@ -15,9 +15,12 @@ import 'services/window_settings_save_queue.dart';
 import 'ui/home_screen.dart';
 import 'ui/theme.dart';
 
-/// ImageSquoosher アプリケーション。
+/// ImageSquoosher アプリケーションを構成するルートウィジェット。
 class ImageSquoosherApp extends StatefulWidget {
   /// 起動時の設定と永続化サービスをアプリ全体へ渡す。
+  /// @param key ウィジェットを識別するキー
+  /// @param initialSettings 起動時に適用する設定。省略時は既定値を使う
+  /// @param settingsService 設定の読み書きに使うサービス。省略時は共有インスタンスを使う
   ImageSquoosherApp({super.key, SettingsSnapshot? initialSettings, SettingsService? settingsService})
     : initialSettings = initialSettings ?? SettingsSnapshot.defaults(),
       settingsService = settingsService ?? SettingsService.instance;
@@ -28,6 +31,8 @@ class ImageSquoosherApp extends StatefulWidget {
   /// テスト時に保存先を差し替えるための設定サービス。
   final SettingsService settingsService;
 
+  /// StatefulWidget の状態を生成する。
+  /// @returns アプリケーション状態
   @override
   State<ImageSquoosherApp> createState() => _ImageSquoosherAppState();
 }
@@ -69,6 +74,8 @@ class _ImageSquoosherAppState extends State<ImageSquoosherApp> with WindowListen
   }
 
   /// 保存失敗をログへ残し、次の保存を実行できる状態へ戻す。
+  /// @param error 保存時に発生したエラー
+  /// @param stackTrace エラー発生時のスタックトレース
   void _logWindowSettingsSaveError(Object error, StackTrace stackTrace) {
     LoggingService.instance.error(
       'Failed to save window settings.',
@@ -119,6 +126,7 @@ class _ImageSquoosherAppState extends State<ImageSquoosherApp> with WindowListen
   }
 
   /// 設定画面から受け取った言語をアプリ全体へ反映する。
+  /// @param languageCode 適用する言語コード
   void _updateLocale(String languageCode) {
     final locale = Locale(languageCode);
     if (_locale != locale) {
@@ -127,6 +135,8 @@ class _ImageSquoosherAppState extends State<ImageSquoosherApp> with WindowListen
   }
 
   /// テーマ、表示言語、メイン画面を構築する。
+  /// @param context ウィジェットツリーの BuildContext
+  /// @returns アプリケーション画面
   @override
   Widget build(BuildContext context) {
     return SystemThemeBuilder(

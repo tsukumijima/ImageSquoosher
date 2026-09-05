@@ -10,25 +10,35 @@
 
 #include "win32_window.h"
 
-// A window that does nothing but host a Flutter view.
+/// Flutter のビューとファイル操作チャネルを保持するウィンドウ。
 class FlutterWindow : public Win32Window {
  public:
-  // Creates a new FlutterWindow hosting a Flutter view running |project|.
+  /// 表示する Flutter プロジェクトを保持する。
+  /// @param project ウィンドウ内で実行する Dart プロジェクト
   explicit FlutterWindow(const flutter::DartProject& project);
+  /// Flutter のビューとチャネルを含むメンバーを破棄する。
   virtual ~FlutterWindow();
 
  protected:
-  // Win32Window:
+  /// Flutter のエンジン、ビュー、ファイル操作チャネルを初期化する。
+  /// @returns ウィンドウと Flutter を初期化できた場合は true
   bool OnCreate() override;
+  /// ファイル操作チャネルと Flutter のビューを解放する。
   void OnDestroy() override;
+  /// Flutter と OS のウィンドウメッセージを処理する。
+  /// @param window メッセージの対象ウィンドウ
+  /// @param message Win32 メッセージ識別子
+  /// @param wparam メッセージ固有の追加情報
+  /// @param lparam メッセージ固有の追加情報
+  /// @returns Flutter または基底ウィンドウによる処理結果
   LRESULT MessageHandler(HWND window, UINT const message, WPARAM const wparam,
                          LPARAM const lparam) noexcept override;
 
  private:
-  // The project to run.
+  // ウィンドウ内で実行するプロジェクト
   flutter::DartProject project_;
 
-  // The Flutter instance hosted by this window.
+  // ウィンドウが保持する Flutter のエンジンとビュー
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
 
   // 元画像の日時複製と検証済み出力の置換を実行する MethodChannel

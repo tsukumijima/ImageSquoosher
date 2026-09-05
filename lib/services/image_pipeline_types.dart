@@ -4,24 +4,28 @@ import 'dart:io';
 import '../models/conversion_settings.dart';
 import '../models/image_dimensions.dart';
 
-/// 入力ファイルが使う静止画形式です。
+/// 入力ファイルが使う静止画形式。
 enum SourceImageFormat {
-  /// JPEG です。
+  /// JPEG 形式。
   jpeg,
 
-  /// PNG です。
+  /// PNG 形式。
   png,
 
-  /// WebP です。
+  /// WebP 形式。
   webp,
 }
 
-/// 1ファイルを JPEG へ変換する指定です。
-///
-/// 画面や設定モデルは、この小さな値オブジェクトへ選択値を渡します。
-/// 変換器は UI の状態から独立しているため、順次バッチ処理中も同じ条件を保てます。
+/// 1ファイルを JPEG へ変換する指定。
+/// 画面や設定モデルから受け取った値を UI の状態から切り離し、変換中の条件を固定する。
 class ImageConversionRequest {
-  /// 変換指定を作成します。
+  /// 変換指定を作成する。
+  /// @param inputFile デコードする画像ファイル
+  /// @param outputFile 生成する JPEG の出力先
+  /// @param cjpegExecutable 実行する `cjpeg` のファイル
+  /// @param settings 切り出し、リサイズ、画質、メタデータを決める設定
+  /// @param finalizeStagedOutput 検証済み出力へファイル属性を反映する処理
+  /// @param onProgress 変換の進捗を 0.0 から 1.0 で受け取る処理
   ImageConversionRequest({
     required this.inputFile,
     required this.outputFile,
@@ -31,32 +35,38 @@ class ImageConversionRequest {
     this.onProgress,
   });
 
-  /// デコードする画像ファイルです。
+  /// デコードする画像ファイル。
   final File inputFile;
 
-  /// 原子的に置き換える JPEG 出力先です。
+  /// 原子的に置き換える JPEG 出力先。
   final File outputFile;
 
-  /// バンドル済み `cjpeg` の実行ファイルです。
+  /// バンドル済み `cjpeg` の実行ファイル。
   final File cjpegExecutable;
 
-  /// 切り出し、リサイズ、画質、メタデータを決める唯一の変換設定です。
+  /// 切り出し、リサイズ、画質、メタデータを決める変換設定。
   final ConversionSettings settings;
 
-  /// 準備、圧縮、検証、保存の工程進捗を 0.0 から 1.0 で通知します。
-  ///
-  /// 経過時間の割合ではなく、1.0 は出力の公開まで成功したことを表します。
+  /// 準備、圧縮、検証、保存の工程進捗を 0.0 から 1.0 で通知する処理。
+  /// 経過時間ではなく、1.0 は出力の公開まで成功した状態を表す。
   final void Function(double progress)? onProgress;
 
-  /// 検証済み JPEG を公開する直前に、日時などのファイル属性を反映します。
-  ///
-  /// 上書き時も入力が残っている段階で呼び出すため、元の作成日時をステージ済み出力へ複製できます。
+  /// 検証済み JPEG を公開する直前に、日時などのファイル属性を反映する処理。
+  /// 入力が残っている上書き前の段階で呼び出し、元ファイルの属性をステージ済み出力へ複製する。
   final Future<void> Function(File sourceFile, File stagedOutput)? finalizeStagedOutput;
 }
 
-/// 正常に完了した1ファイルの変換結果です。
+/// 正常に完了した1ファイルの変換結果。
 class ImageConversionResult {
-  /// 変換結果を作成します。
+  /// 変換結果を作成する。
+  /// @param inputFile 変換元の画像ファイル
+  /// @param outputFile 生成した JPEG
+  /// @param sourceFormat 読み取った画像形式
+  /// @param sourceWidth EXIF 補正後の横幅
+  /// @param sourceHeight EXIF 補正後の高さ
+  /// @param cropRect 出力比率へ合わせた中央切り出し範囲
+  /// @param outputWidth 出力 JPEG の横幅
+  /// @param outputHeight 出力 JPEG の高さ
   const ImageConversionResult({
     required this.inputFile,
     required this.outputFile,
@@ -68,82 +78,88 @@ class ImageConversionResult {
     required this.outputHeight,
   });
 
-  /// 変換元です。
+  /// 変換元の画像ファイル。
   final File inputFile;
 
-  /// 生成した JPEG です。
+  /// 生成した JPEG。
   final File outputFile;
 
-  /// 読み取った画像形式です。
+  /// 読み取った画像形式。
   final SourceImageFormat sourceFormat;
 
-  /// EXIF 補正後の横幅です。
+  /// EXIF 補正後の横幅。
   final int sourceWidth;
 
-  /// EXIF 補正後の高さです。
+  /// EXIF 補正後の高さ。
   final int sourceHeight;
 
-  /// 出力比率へ合わせた中央切り出し範囲です。
+  /// 出力比率へ合わせた中央切り出し範囲。
   final CropRect cropRect;
 
-  /// 出力 JPEG の横幅です。
+  /// 出力 JPEG の横幅。
   final int outputWidth;
 
-  /// 出力 JPEG の高さです。
+  /// 出力 JPEG の高さ。
   final int outputHeight;
 }
 
-/// 変換できなかったファイルと例外です。
+/// 変換できなかったファイルと例外。
 class ImageConversionFailure {
-  /// 失敗内容を作成します。
+  /// 失敗内容を作成する。
+  /// @param inputFile 変換に失敗した画像ファイル
+  /// @param error 発生した例外
+  /// @param stackTrace 例外が発生した地点
   const ImageConversionFailure({
     required this.inputFile,
     required this.error,
     required this.stackTrace,
   });
 
-  /// 変換対象です。
+  /// 変換対象の画像ファイル。
   final File inputFile;
 
-  /// 発生した例外です。
+  /// 発生した例外。
   final Object error;
 
-  /// 失敗地点です。
+  /// 失敗地点のスタックトレース。
   final StackTrace stackTrace;
 }
 
-/// 順次バッチ変換の完了状態です。
+/// 順次バッチ変換の完了状態。
 class ImageBatchConversionResult {
-  /// バッチ結果を作成します。
+  /// バッチ結果を作成する。
+  /// @param completed 正常に生成できた JPEG の結果
+  /// @param failures 個別に失敗し、処理を継続できたファイルの結果
+  /// @param wasStopped 停止要求によって未処理のファイルを残した状態かどうか
   const ImageBatchConversionResult({
     required this.completed,
     required this.failures,
     required this.wasStopped,
   });
 
-  /// 生成済み JPEG です。
+  /// 生成済み JPEG の結果。
   final List<ImageConversionResult> completed;
 
-  /// 続行可能なファイル単位の失敗です。
+  /// 続行可能なファイル単位の失敗。
   final List<ImageConversionFailure> failures;
 
-  /// 停止要求を受け取った状態です。
+  /// 停止要求を受け取った状態かどうか。
   final bool wasStopped;
 }
 
-/// 画面からバッチへ渡す停止要求です。
-///
-/// 実行中の1件を完了した直後、次のファイルへ進む境界で利用します。
+/// 画面からバッチへ渡す停止要求。
+/// 実行中の1件を完了した直後、次のファイルへ進む境界で利用する。
 class ImageConversionStopToken {
+  /// 停止要求を一度だけ完了させる通知。
   final Completer<void> _requested = Completer<void>();
 
-  /// 停止要求済みなら `true` です。
+  /// 停止要求を受け取った状態かどうか。
   bool get isRequested => _requested.isCompleted;
 
-  /// 停止を通知する [Future] です。
+  /// 停止要求が完了したときに完了する `Future`。
   Future<void> get whenRequested => _requested.future;
 
-  /// 停止を要求します。
+  /// 停止を要求する。
   void requestStop() {
     if (!_requested.isCompleted) {
       _requested.complete();
@@ -151,35 +167,43 @@ class ImageConversionStopToken {
   }
 }
 
-/// 利用者が変換停止を求めたことを表します。
+/// 利用者が変換停止を求めたことを表す例外。
 class ImageConversionStoppedException implements Exception {
-  /// 停止理由を作成します。
+  /// 停止理由を作成する。
   const ImageConversionStoppedException();
 
+  /// 停止例外を表示用の文字列へ変換する。
+  /// @returns 停止理由の文字列
   @override
   String toString() => 'Image conversion was stopped.';
 }
 
-/// デコード対象が静止 JPEG/PNG/WebP でないことを表します。
+/// デコード対象が静止 JPEG/PNG/WebP でないことを表す例外。
 class UnsupportedImageException implements Exception {
-  /// 例外を作成します。
+  /// 例外を作成する。
+  /// @param message 利用者へ伝える理由
   const UnsupportedImageException(this.message);
 
-  /// 利用者へ出す理由です。
+  /// 利用者へ伝える理由。
   final String message;
 
+  /// 例外を表示用の文字列へ変換する。
+  /// @returns 利用者へ伝える理由
   @override
   String toString() => message;
 }
 
-/// `cjpeg` が JPEG を生成できなかったことを表します。
+/// `cjpeg` が JPEG を生成できなかったことを表す例外。
 class MozJpegEncodingException implements Exception {
-  /// 例外を作成します。
+  /// 例外を作成する。
+  /// @param message `cjpeg` の標準エラー出力を含む理由
   const MozJpegEncodingException(this.message);
 
-  /// `cjpeg` の標準エラー出力を含む理由です。
+  /// `cjpeg` の標準エラー出力を含む理由。
   final String message;
 
+  /// 例外を表示用の文字列へ変換する。
+  /// @returns `cjpeg` の失敗理由
   @override
   String toString() => message;
 }

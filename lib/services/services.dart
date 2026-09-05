@@ -1,4 +1,4 @@
-/// サービス層のバレルファイル
+/// サービス層のバレルファイル。
 library;
 
 export 'image_conversion_pipeline.dart';

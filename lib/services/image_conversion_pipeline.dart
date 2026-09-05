@@ -12,22 +12,26 @@ import 'image_metadata.dart';
 import 'image_mozjpeg_encoder.dart';
 import 'image_pipeline_types.dart';
 
-/// JPEG・PNG・WebP の静止画を MozJPEG へ変換する一連の処理です。
-///
-/// デコード後の画素処理は Dart の [Isolate] で完結し、ネイティブ実行は最後の `cjpeg` だけです。
-/// 入力をすべて読んで検証してから出力用の一時ディレクトリを使い、検証済みの出力だけを公開します。
+/// JPEG・PNG・WebP の静止画を MozJPEG へ変換する一連の処理。
+/// デコード後の画素処理は Dart の [Isolate] で完結し、ネイティブ実行は最後の `cjpeg` だけとする。
+/// 入力をすべて読んで検証してから出力用の一時ディレクトリを使い、検証済みの出力だけを公開する。
 class ImageConversionPipeline {
-  /// 置換失敗時も元画像を残す処理を検査できるよう、ステージ済み出力の確定処理を差し替えられます。
+  /// 置換失敗時も元画像を残す処理を検査できるよう、ステージ済み出力の確定処理を差し替え可能なパイプラインを作成する。
+  /// @param replaceStagedOutput ステージ済み出力を最終出力へ移す処理 (省略時は OS 標準の処理を使う)
   ImageConversionPipeline({Future<void> Function(File stagedOutput, File outputFile)? replaceStagedOutput})
     : _replaceStagedOutput = replaceStagedOutput;
 
+  /// Windows の原子的なファイル置換を呼び出すチャネル。
   static const _fileOperationsChannel = MethodChannel(
     'net.tsukumijima.image-squoosher/finder_sync',
   );
 
+  /// ステージ済み出力を確定する差し替え処理。
   final Future<void> Function(File stagedOutput, File outputFile)? _replaceStagedOutput;
 
-  /// 1枚を JPEG へ変換します。
+  /// 1枚を JPEG へ変換する。
+  /// @param request 入力、出力、変換設定、進捗通知を含む変換指定
+  /// @returns 検証済み出力のパスと画像寸法を含む変換結果
   Future<ImageConversionResult> convert(ImageConversionRequest request) async {
     request.onProgress?.call(0.0);
     final inputPath = request.inputFile.path;
@@ -140,12 +144,18 @@ class ImageConversionPipeline {
     );
   }
 
-  /// 画面のコールバックをワーカーへ取り込まないよう、入力パスと設定だけを渡します。
+  /// 画面のコールバックをワーカーへ取り込まないよう、入力パスと設定だけを渡して画像を準備する。
+  /// @param inputPath 読み込む画像ファイルのパス
+  /// @param settings クロップ、リサイズ、画質、メタデータの設定
+  /// @returns デコードと画素準備を終えた画像データ
   static Future<_PreparedImage> _prepareImageInIsolate(String inputPath, ConversionSettings settings) {
     return Isolate.run(() => _prepareImage(inputPath, settings));
   }
 
-  /// デコード、向き補正、中央クロップをワーカー [Isolate] でまとめて実行します。
+  /// デコード、向き補正、中央クロップをワーカー [Isolate] でまとめて実行する。
+  /// @param inputPath 読み込む画像ファイルのパス
+  /// @param settings クロップ、リサイズ、画質、メタデータの設定
+  /// @returns エンコードへ渡す準備済み画像データ
   static Future<_PreparedImage> _prepareImage(String inputPath, ConversionSettings settings) async {
     final inputBytes = await File(inputPath).readAsBytes();
     final decoder = image.findDecoderForData(inputBytes);
@@ -198,7 +208,9 @@ class ImageConversionPipeline {
     );
   }
 
-  /// [source] 全体を白背景の 8bit sRGB 配列へ変換します。
+  /// [source] 全体を白背景の 8bit sRGB 配列へ変換する。
+  /// @param source 変換する画像
+  /// @returns 左上から右下へ並ぶ 8bit RGB 配列
   static Uint8List _copyAsWhiteSrgbBytes(image.Image source) {
     if (source.isLdrFormat && source.hasPalette == false && source.numChannels == 3) {
       // 8bit RGB はコピーも色変換も不要なため、デコーダーの画素列を PPM へそのまま渡す
@@ -236,9 +248,11 @@ class ImageConversionPipeline {
     return rgbBytes;
   }
 
-  /// [requests] を選択順に変換し、個別失敗は記録して次の画像へ進みます。
-  ///
-  /// 大きな画像を並列に展開するとメモリ使用量が急増するため、変換開始順と出力更新順をそろえた逐次処理にします。
+  /// [requests] を選択順に変換し、個別失敗を記録して次の画像へ進む。
+  /// 大きな画像のメモリ使用量を抑えるため、変換開始順と出力更新順をそろえる。
+  /// @param requests 選択順の変換指定
+  /// @param stopToken 次のファイルへ進む前に停止要求を確認するトークン
+  /// @returns 完了、失敗、停止状態を含むバッチ結果
   Future<ImageBatchConversionResult> convertSequentially(
     Iterable<ImageConversionRequest> requests, {
     ImageConversionStopToken? stopToken,
@@ -273,7 +287,10 @@ class ImageConversionPipeline {
     );
   }
 
-  /// [source] の [cropRect] を白背景の線形 RGB 配列へ変換します。
+  /// [source] の [cropRect] を白背景の線形 RGB 配列へ変換する。
+  /// @param source 切り出し元の画像
+  /// @param cropRect 切り出す矩形
+  /// @returns Lanczos リサイズへ渡す線形 RGB 画像
   static LanczosLinearRgbImage _copyCropAsWhiteLinearRgb(
     image.Image source,
     CropRect cropRect,
@@ -298,12 +315,19 @@ class ImageConversionPipeline {
     );
   }
 
-  /// 出力 JPEG の全画素デコードをワーカーへ渡し、検証中も画面の応答を保ちます。
+  /// 出力 JPEG の全画素デコードによる検証をワーカーへ渡す。
+  /// @param jpegBytes 検証する JPEG バイト列
+  /// @param width 要求した横幅
+  /// @param height 要求した高さ
+  /// @returns 検証完了を通知する Future
   static Future<void> _verifyJpegInIsolate(Uint8List jpegBytes, int width, int height) {
     return Isolate.run(() => _verifyJpeg(jpegBytes, width, height));
   }
 
-  /// 生成結果が要求解像度の JPEG かを確認します。
+  /// 生成結果が要求解像度の JPEG かを確認する。
+  /// @param jpegBytes 検証する JPEG バイト列
+  /// @param width 要求した横幅
+  /// @param height 要求した高さ
   static void _verifyJpeg(Uint8List jpegBytes, int width, int height) {
     final decoder = image.findDecoderForData(jpegBytes);
     if (decoder == null || decoder.format != image.ImageFormat.jpg) {
@@ -315,7 +339,9 @@ class ImageConversionPipeline {
     }
   }
 
-  /// Windows の既存出力をステージ済み JPEG で置き換えます。
+  /// Windows の既存出力をステージ済み JPEG で置き換える。
+  /// @param stagedOutput 検証済みの一時 JPEG
+  /// @param outputFile 置き換える既存 JPEG のパス
   static Future<void> _replaceStagedOutputOnWindows(File stagedOutput, File outputFile) async {
     try {
       // 一時出力と既存 JPEG を同じボリューム内で1回の Win32 操作として入れ替える
@@ -344,7 +370,9 @@ class ImageConversionPipeline {
     }
   }
 
-  /// ステージ済みファイルを既存 JPEG 入力へ原子的に名前変更します。
+  /// ステージ済みファイルを既存 JPEG 入力へ原子的に名前変更する。
+  /// @param stagedOutput 検証済みの一時 JPEG
+  /// @param outputFile 置き換える JPEG 入力のパス
   static Future<void> _renameAtomically(File stagedOutput, File outputFile) async {
     try {
       await stagedOutput.rename(outputFile.path);
@@ -357,7 +385,10 @@ class ImageConversionPipeline {
     }
   }
 
-  /// ステージ済みファイルを、既存ファイルを置き換えずに新規出力として公開します。
+  /// ステージ済みファイルを既存ファイルを置き換えずに新規出力として公開する。
+  /// @param stagedOutput 検証済みの一時 JPEG
+  /// @param outputFile 排他的に確保する新規出力のパス
+  /// @param replaceStagedOutput ステージ済み出力を確定する処理 (省略時は OS 標準の処理を使う)
   static Future<void> _publishNewOutputExclusively(
     File stagedOutput,
     File outputFile, {
@@ -390,7 +421,9 @@ class ImageConversionPipeline {
     }
   }
 
-  /// `image` パッケージの形式を許可された静止画へ絞ります。
+  /// `image` パッケージの形式を許可された静止画へ絞る。
+  /// @param format `image` パッケージが検出した画像形式
+  /// @returns 対応する静止画形式
   static SourceImageFormat _sourceFormatFor(image.ImageFormat format) {
     return switch (format) {
       image.ImageFormat.jpg => SourceImageFormat.jpeg,
@@ -403,8 +436,17 @@ class ImageConversionPipeline {
   }
 }
 
-/// ワーカー [Isolate] からエンコード処理へ返す、1枚分の準備済みデータです。
+/// ワーカー [Isolate] からエンコード処理へ渡す、1枚分の準備済みデータ。
 class _PreparedImage {
+  /// 準備済み画像データを作成する。
+  /// @param sourceFormat 入力画像の形式
+  /// @param sourceWidth 向き補正後の横幅
+  /// @param sourceHeight 向き補正後の高さ
+  /// @param plan クロップと出力寸法の計画
+  /// @param crop 切り出し済み線形 RGB 画像 (直接変換時は null)
+  /// @param directRgbBytes 直接変換に使う RGB 配列 (クロップ時は null)
+  /// @param metadataSegments 出力へ移植するメタデータセグメント
+  /// @param iccProfileBytes 出力へ埋め込む ICC プロファイル
   const _PreparedImage({
     required this.sourceFormat,
     required this.sourceWidth,
@@ -416,12 +458,27 @@ class _PreparedImage {
     required this.iccProfileBytes,
   });
 
+  /// 入力画像の形式。
   final SourceImageFormat sourceFormat;
+
+  /// 向き補正後の横幅。
   final int sourceWidth;
+
+  /// 向き補正後の高さ。
   final int sourceHeight;
+
+  /// クロップと出力寸法の計画。
   final ImageSizePlan plan;
+
+  /// 切り出し済み線形 RGB 画像。直接変換時は null。
   final LanczosLinearRgbImage? crop;
+
+  /// 直接変換に使う RGB 配列。クロップ時は null。
   final Uint8List? directRgbBytes;
+
+  /// 出力へ移植するメタデータセグメント。
   final List<JpegMetadataSegment> metadataSegments;
+
+  /// 出力へ埋め込む ICC プロファイル。
   final Uint8List? iccProfileBytes;
 }

@@ -7,38 +7,33 @@
 
 namespace {
 
-/// Window attribute that enables dark mode window decorations.
-///
-/// Redefined in case the developer's machine has a Windows SDK older than
-/// version 10.0.22000.0.
-/// See: https://docs.microsoft.com/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
+/// Windows SDK 10.0.22000.0 より古い環境でもダークモードの枠を指定する属性。
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 
-/// Registry key for app theme preference.
-///
-/// A value of 0 indicates apps should use dark mode. A non-zero or missing
-/// value indicates apps should use light mode.
+/// アプリの配色設定を保持するレジストリキー (0 がダークモード)。
 constexpr const wchar_t kGetPreferredBrightnessRegKey[] =
   L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
 constexpr const wchar_t kGetPreferredBrightnessRegValue[] = L"AppsUseLightTheme";
 
-// The number of Win32Window objects that currently exist.
+// ウィンドウクラスの解放時期を判定するための生存インスタンス数
 static int g_active_window_count = 0;
 
 using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 
-// Scale helper to convert logical scaler values to physical using passed in
-// scale factor
+/// 論理座標へ DPI 倍率を適用して物理ピクセルへ変換する。
+/// @param source 変換元の論理座標または寸法
+/// @param scale_factor 適用する DPI 倍率
+/// @returns 小数部分を切り捨てた物理ピクセル値
 int Scale(int source, double scale_factor) {
   return static_cast<int>(source * scale_factor);
 }
 
-// Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
-// This API is only needed for PerMonitor V1 awareness mode.
+/// 対応する OS ではウィンドウ枠の DPI スケーリングを有効にする。
+/// @param hwnd スケーリングを適用するウィンドウハンドル
 void EnableFullDpiSupportIfAvailable(HWND hwnd) {
   HMODULE user32_module = LoadLibraryA("User32.dll");
   if (!user32_module) {
@@ -55,12 +50,13 @@ void EnableFullDpiSupportIfAvailable(HWND hwnd) {
 
 }  // namespace
 
-// Manages the Win32Window's window class registration.
+/// Win32Window が共有するウィンドウクラスの登録を管理する。
 class WindowClassRegistrar {
  public:
   ~WindowClassRegistrar() = default;
 
-  // Returns the singleton registrar instance.
+  /// 登録状態を共有するインスタンスを取得する。
+  /// @returns 必要に応じて生成した登録管理インスタンス
   static WindowClassRegistrar* GetInstance() {
     if (!instance_) {
       instance_ = new WindowClassRegistrar();
@@ -68,12 +64,11 @@ class WindowClassRegistrar {
     return instance_;
   }
 
-  // Returns the name of the window class, registering the class if it hasn't
-  // previously been registered.
+  /// 未登録の場合はウィンドウクラスを登録し、その名前を取得する。
+  /// @returns ウィンドウ生成へ渡すクラス名
   const wchar_t* GetWindowClass();
 
-  // Unregisters the window class. Should only be called if there are no
-  // instances of the window.
+  /// 最後のウィンドウを破棄した後に共有クラスの登録を解除する。
   void UnregisterWindowClass();
 
  private:
@@ -235,7 +230,7 @@ Win32Window::MessageHandler(HWND hwnd,
     case WM_SIZE: {
       RECT rect = GetClientArea();
       if (child_content_ != nullptr) {
-        // Size and position the child window.
+        // 子ウィンドウを変更後の表示領域に合わせる
         MoveWindow(child_content_, rect.left, rect.top, rect.right - rect.left,
                    rect.bottom - rect.top, TRUE);
       }
@@ -299,12 +294,12 @@ void Win32Window::SetQuitOnClose(bool quit_on_close) {
 }
 
 bool Win32Window::OnCreate() {
-  // No-op; provided for subclasses.
+  // 初期化の追加処理は派生クラスで実装する
   return true;
 }
 
 void Win32Window::OnDestroy() {
-  // No-op; provided for subclasses.
+  // リソースの追加解放は派生クラスで実装する
 }
 
 void Win32Window::UpdateTheme(HWND const window) {

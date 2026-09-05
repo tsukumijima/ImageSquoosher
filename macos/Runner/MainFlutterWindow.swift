@@ -1,7 +1,9 @@
 import Cocoa
 import FlutterMacOS
 
+/// Flutter の表示と手動リサイズに対応するメインウィンドウ。
 class MainFlutterWindow: NSWindow {
+  /// Nib の枠寸法を引き継いで Flutter とプラグインを初期化する。
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
@@ -16,6 +18,8 @@ class MainFlutterWindow: NSWindow {
     collectionBehavior.remove(.fullScreenPrimary)
   }
 
+  /// ウィンドウを前面へ出し、ズームボタンを非表示にする。
+  /// - Parameter sender: ウィンドウを表示する操作の送信元
   override func makeKeyAndOrderFront(_ sender: Any?) {
     super.makeKeyAndOrderFront(sender)
 
@@ -36,10 +40,14 @@ class MainFlutterWindow: NSWindow {
     }
   }
 
+  /// ズーム操作を受けても手動で指定されたウィンドウ寸法を保つ。
+  /// - Parameter sender: ズーム操作の送信元
   override func zoom(_ sender: Any?) {
     // 手動リサイズの寸法を保ち、緑のズーム操作後も現在の枠を維持する
   }
 
+  /// フルスクリーン操作を受けても通常ウィンドウの表示を保つ。
+  /// - Parameter sender: フルスクリーン操作の送信元
   override func toggleFullScreen(_ sender: Any?) {
     // 通常ウィンドウとして扱い、メニュー操作後も現在の表示形態を保つ
   }
