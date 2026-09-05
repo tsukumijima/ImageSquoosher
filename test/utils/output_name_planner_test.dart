@@ -16,6 +16,13 @@ void main() {
     );
   });
 
+  test('preserves a numeric filename suffix that exceeds the integer range', () {
+    expect(
+      OutputNamePlanner.outputPath(inputPath: '/pictures/photo (123456789012345678901234567890).png'),
+      '/pictures/photo (123456789012345678901234567890)_resized.jpg',
+    );
+  });
+
   test('advances the inherited sequence when the candidate is occupied', () {
     expect(
       OutputNamePlanner.outputPath(

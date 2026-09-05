@@ -187,12 +187,13 @@ class OutputNamePlanner {
   /// ファイル名末尾の Finder 形式の連番を読み取る。
   static int? _trailingSequence(String stem) {
     final match = RegExp(r' \((\d+)\)$').firstMatch(stem);
-    return match == null ? null : int.parse(match.group(1)!);
+    // 整数の範囲を超える数字列も有効なファイル名なので、その場合は名前の一部として保持する
+    return match == null ? null : int.tryParse(match.group(1)!);
   }
 
   /// ファイル名から Finder 形式の連番を取り除く。
   static String _removeTrailingSequence(String stem) {
-    return stem.replaceFirst(RegExp(r' \(\d+\)$'), '');
+    return _trailingSequence(stem) == null ? stem : stem.replaceFirst(RegExp(r' \(\d+\)$'), '');
   }
 
   /// 必要な場合だけファイル名末尾へ連番を付ける。
