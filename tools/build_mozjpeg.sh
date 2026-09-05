@@ -7,21 +7,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly PROJECT_ROOT
 readonly MOZJPEG_VERSION='4.1.1'
 readonly SOURCE_URL="https://github.com/mozilla/mozjpeg/archive/refs/tags/v${MOZJPEG_VERSION}.tar.gz"
-HOST_ARCH="$(uname -m)"
-readonly HOST_ARCH
-case "$HOST_ARCH" in
-  arm64|aarch64)
-    readonly TARGET_ARCH='arm64'
-    ;;
-  x86_64|amd64)
-    readonly TARGET_ARCH='x86_64'
-    ;;
-  *)
-    printf 'Unsupported macOS architecture: %s.\n' "$HOST_ARCH" >&2
-    exit 1
-    ;;
-esac
-readonly OUTPUT_DIRECTORY="${PROJECT_ROOT}/native/mozjpeg/macos/${TARGET_ARCH}"
+readonly OUTPUT_DIRECTORY="${PROJECT_ROOT}/native/mozjpeg/macos/arm64"
 WORK_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/image-squoosher-mozjpeg.XXXXXX")"
 readonly WORK_DIRECTORY
 
@@ -48,7 +34,7 @@ tar -xzf "${ARCHIVE_PATH}" --directory "${WORK_DIRECTORY}"
 # ENABLE_SHARED を切ると、別途 dylib を配布せず cjpeg 単体を Resources へコピーできる
 cmake -S "${SOURCE_DIRECTORY}" -B "${BUILD_DIRECTORY}" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_OSX_ARCHITECTURES="${TARGET_ARCH}" \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
   -DENABLE_SHARED=OFF \
   -DWITH_TURBOJPEG=OFF
@@ -69,4 +55,4 @@ if otool -L "${OUTPUT_DIRECTORY}/cjpeg" | tail -n +2 | grep -E '/(libjpeg|mozjpe
   exit 1
 fi
 
-printf 'Built MozJPEG %s for %s: %s.\n' "${MOZJPEG_VERSION}" "${TARGET_ARCH}" "${OUTPUT_DIRECTORY}/cjpeg"
+printf 'Built MozJPEG %s for %s: %s.\n' "${MOZJPEG_VERSION}" arm64 "${OUTPUT_DIRECTORY}/cjpeg"

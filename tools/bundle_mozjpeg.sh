@@ -12,21 +12,7 @@ if [ ! -d "$APP_PATH" ]; then
   exit 1
 fi
 
-HOST_ARCH="$(uname -m)"
-case "$HOST_ARCH" in
-  arm64|aarch64)
-    TARGET_ARCH='arm64'
-    ;;
-  x86_64|amd64)
-    TARGET_ARCH='x86_64'
-    ;;
-  *)
-    printf 'Unsupported macOS architecture: %s.\n' "$HOST_ARCH" >&2
-    exit 1
-    ;;
-esac
-
-readonly SOURCE_PATH="${PROJECT_ROOT}/native/mozjpeg/macos/${TARGET_ARCH}/cjpeg"
+readonly SOURCE_PATH="${PROJECT_ROOT}/native/mozjpeg/macos/arm64/cjpeg"
 readonly DESTINATION_DIRECTORY="${APP_PATH}/Contents/Resources/mozjpeg"
 readonly DESTINATION_PATH="${DESTINATION_DIRECTORY}/cjpeg"
 

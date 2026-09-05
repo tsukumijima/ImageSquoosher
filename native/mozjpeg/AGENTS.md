@@ -3,8 +3,8 @@
 このディレクトリには、`tools/build_mozjpeg.sh` または `tools/build_mozjpeg.ps1` が生成する MozJPEG 4.1.1 の `cjpeg` を置きます。  
 アプリ本体は FFI を使わず、生成された実行ファイルを `Process.start()` で起動します。
 
-macOS の出力先は `native/mozjpeg/macos/<arch>/cjpeg` です。  
-Windows の出力先は `native/mozjpeg/windows/cjpeg.exe` です。
+macOS は arm64 のみをビルドし、出力先は `native/mozjpeg/macos/arm64/cjpeg` です。  
+Windows は x64 のみをビルドし、出力先は `native/mozjpeg/windows/cjpeg.exe` です。
 
 `tools/bundle_mozjpeg.sh` は macOS app bundle の `Contents/Resources/mozjpeg/` へ、`tools/bundle_mozjpeg.ps1` は Windows release 出力の `mozjpeg/` へコピーします。
 

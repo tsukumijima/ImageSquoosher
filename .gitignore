@@ -40,8 +40,6 @@ migrate_working_dir/
 /native/mozjpeg/windows/*
 !/native/mozjpeg/macos/arm64/
 !/native/mozjpeg/macos/arm64/.gitkeep
-!/native/mozjpeg/macos/x86_64/
-!/native/mozjpeg/macos/x86_64/.gitkeep
 !/native/mozjpeg/windows/.gitkeep
 ImageSquoosher-*-macos.zip
 ImageSquoosher-*-windows.zip
