@@ -44,9 +44,9 @@ Animated PNG and WebP files are rejected. ImageSquoosher does not silently switc
 
 The crop is always centered. You can keep the source aspect ratio, choose a preset ratio, or enter a custom horizontal-to-vertical ratio. Resizing uses the selected width or height while preserving the cropped aspect ratio.
 
-In a small window, scroll through the settings and image list. **Add images** sits beside **Clear selection** above the list; **Convert** and **Stop** stay at the bottom.
+Only the image list scrolls; the settings and list heading stay in place. **Add images** is in the upper-right header, **Clear selection** is above the list, and **Convert** and **Stop** stay at the bottom.
 
-Each fixed-height row shows input and output filenames and sizes on the first line, with dimensions and aspect ratios below. Completed rows retain their green progress bars and size reduction, so results remain easy to compare. Output folders can be opened before conversion.
+Each fixed-height row shows input and output filenames and sizes on the first line, with dimensions and aspect ratios below. Status badges include an icon and label. Completed rows retain their green progress bars and size reduction, using the same green as success notifications. Output folders can be opened before conversion.
 
 Click the ratio or resize-axis field to open its options. While the list is open, use the arrow keys and Enter to select an option, or Esc to close the list.
 
