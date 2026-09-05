@@ -116,7 +116,13 @@ jobs:
         shell: pwsh
         run: |
           $env:IMAGE_SQUOOSHER_CJPEG = Join-Path $PWD 'native/mozjpeg/windows/cjpeg.exe'
-          flutter test integration_test -d windows
+          # Flutter 3.35.7 はアプリ終了時にログ接続を閉じるため、テストごとに起動し直す
+          foreach ($testFile in Get-ChildItem integration_test/*_test.dart) {
+            flutter test $testFile.FullName -d windows
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+          }
 
       - name: Build Windows release
         run: flutter build windows --release
@@ -245,8 +251,11 @@ jobs:
       - name: Run macOS desktop integration test
         shell: bash
         run: |
-          IMAGE_SQUOOSHER_CJPEG="$PWD/native/mozjpeg/macos/arm64/cjpeg" \
-            flutter test integration_test -d macos
+          export IMAGE_SQUOOSHER_CJPEG="$PWD/native/mozjpeg/macos/arm64/cjpeg"
+          # Flutter 3.35.7 はアプリ終了時にログ接続を閉じるため、テストごとに起動し直す
+          for test_file in integration_test/*_test.dart; do
+            flutter test "$test_file" -d macos
+          done
 
       - name: Build macOS release
         run: flutter build macos --release
