@@ -51,7 +51,13 @@ class AppDelegate: FlutterAppDelegate {
           .filter { $0.name == "path" }
           .compactMap(\.value) ?? []
       }
-    pendingSelectedImageURLs = queryPaths.isEmpty ? selectedImageURLs() : queryPaths
+    let storedPaths = takeSelectedImageURLs()
+    let receivedPaths = queryPaths.isEmpty ? storedPaths : queryPaths
+    // 続けて届いた URL が消費済みの共有領域を参照しても、未送信の選択を保持する
+    guard receivedPaths.isEmpty == false else {
+      return
+    }
+    pendingSelectedImageURLs = receivedPaths
     sendPendingSelectedImageURLs()
   }
 
@@ -72,11 +78,8 @@ class AppDelegate: FlutterAppDelegate {
       FIFinderSyncController.showExtensionManagementInterface()
       result(nil)
     case "getFinderSelectedImageURLs":
-      let selectedImageURLs = selectedImageURLs()
-      // Finder からの起動時だけ前回の選択を引き渡すため、取得済みの値は共有領域から取り除く
-      UserDefaults(suiteName: Configuration.appGroupIdentifier)?.removeObject(
-        forKey: Configuration.selectedImageURLsKey
-      )
+      // 共有領域は URL イベントで消費し、初期取得では本体が受信済みの選択だけを渡す
+      let selectedImageURLs = pendingSelectedImageURLs
       pendingSelectedImageURLs = []
       result(selectedImageURLs)
     case "copySourceFileDatesToOutputFile":
@@ -99,10 +102,13 @@ class AppDelegate: FlutterAppDelegate {
       url.host == Configuration.finderSelectionHost
   }
 
-  /// App Group から最後に選択された画像 URL を読み出す。
-  private func selectedImageURLs() -> [String] {
-    return UserDefaults(suiteName: Configuration.appGroupIdentifier)?
-      .stringArray(forKey: Configuration.selectedImageURLsKey) ?? []
+  /// App Group の選択を消費し、通常起動時には空の一覧から開始できるようにする。
+  private func takeSelectedImageURLs() -> [String] {
+    let defaults = UserDefaults(suiteName: Configuration.appGroupIdentifier)
+    let selectedImageURLs = defaults?.stringArray(forKey: Configuration.selectedImageURLsKey) ?? []
+    // URL イベントを受け取った時点で、選択を本体のメモリへ移す
+    defaults?.removeObject(forKey: Configuration.selectedImageURLsKey)
+    return selectedImageURLs
   }
 
   /// 元ファイルの作成日時と更新日時を出力ファイルへ複製する。
