@@ -184,4 +184,5 @@ The workflow imports signing material into a temporary keychain, signs the neste
 
 ## License
 
-ImageSquoosher is distributed under the [MIT License](LICENSE). The bundled MozJPEG binary is built from upstream version 4.1.1; its license and attribution files are under [`native/mozjpeg/`](native/mozjpeg/).
+[MIT License](License.txt)
+

@@ -219,7 +219,6 @@ macOS のリリースには、次の GitHub Actions のシークレットが必�
 ワークフローは署名材料を一時キーチェーンへ取り込み、ネストしたフレームワーク、Finder Sync Extension、同梱した `cjpeg`、本体アプリを内側から順に署名します。  
 続けて Apple の公証へ提出し、公証チケットの添付、コード署名、Gatekeeper の検証を行います。
 
-## ライセンス
+## License
 
-ImageSquoosher は [MIT License](LICENSE) で配布します。  
-同梱する MozJPEG バイナリは MozJPEG 4.1.1 の公開ソースからビルドし、ライセンスと帰属表示は [`native/mozjpeg/`](native/mozjpeg/) に収録しています。
+[MIT License](License.txt)
