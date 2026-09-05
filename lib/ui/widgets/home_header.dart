@@ -18,6 +18,7 @@ class HomeHeader extends StatelessWidget {
   /// @param onAddFiles 画像追加時のコールバック
   /// @param onFinderSettings Finder Sync 設定時のコールバック
   /// @param onMenuAction メニュー操作の通知先
+  /// @param isWindowsShellIntegration Explorer 連携の案内を表示するか
   const HomeHeader({
     super.key,
     required this.isCompressing,
@@ -26,6 +27,7 @@ class HomeHeader extends StatelessWidget {
     required this.onAddFiles,
     required this.onFinderSettings,
     required this.onMenuAction,
+    this.isWindowsShellIntegration = false,
   });
 
   final bool isCompressing;
@@ -34,6 +36,7 @@ class HomeHeader extends StatelessWidget {
   final VoidCallback onAddFiles;
   final VoidCallback onFinderSettings;
   final ValueChanged<HomeMenuAction> onMenuAction;
+  final bool isWindowsShellIntegration;
 
   static const _menuItemStyle = ButtonStyle(
     minimumSize: WidgetStatePropertyAll(Size(0, 32)),
@@ -83,7 +86,11 @@ class HomeHeader extends StatelessWidget {
               width: 40,
               height: 40,
               child: IconButton(
-                tooltip: isFinderSyncEnabled ? l10n.finderSyncManage : l10n.finderSyncEnable,
+                tooltip: isWindowsShellIntegration
+                    ? l10n.windowsShellIntegration
+                    : isFinderSyncEnabled
+                    ? l10n.finderSyncManage
+                    : l10n.finderSyncEnable,
                 onPressed: isCompressing ? null : onFinderSettings,
                 icon: Icon(
                   isFinderSyncEnabled ? Icons.extension : Icons.extension_off_outlined,

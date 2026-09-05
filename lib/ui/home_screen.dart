@@ -132,7 +132,7 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Finder 拡張から届く選択を、外部からの明示的な置き換えとして扱う。
+  /// Finder の選択は一覧を置き換え、Explorer の選択は分割通知も含めて追加する。
   void _listenForFinderSelection() {
     _finderMethodChannel.setMethodCallHandler((call) async {
       if (call.method != 'finderSelectedImageURLs') {
@@ -143,13 +143,15 @@ class HomeScreenState extends State<HomeScreen> {
         return;
       }
       _didReceiveFinderSelection = true;
-      // 実行中のキューを保ち、変換が終了した時点で最後に選んだ画像を取り込む
+      // Explorer は画像ごとに起動するため、変換中も届いたパスを重複なく蓄積する
       if (_controller.isCompressing) {
-        _pendingFinderSelection = paths;
+        _pendingFinderSelection = Platform.isWindows ? {...?_pendingFinderSelection, ...paths}.toList() : paths;
         return;
       }
+      // 完了直後の次フレームを待つ選択も、続いて届いた選択と一緒に取り込む
+      final selectedPaths = Platform.isWindows ? {...?_pendingFinderSelection, ...paths}.toList() : paths;
       _pendingFinderSelection = null;
-      _replaceFiles(paths);
+      _applyPlatformSelection(selectedPaths);
     });
   }
 
@@ -158,8 +160,8 @@ class HomeScreenState extends State<HomeScreen> {
     try {
       final value = await _finderMethodChannel.invokeMethod<dynamic>('getFinderSelectedImageURLs');
       final paths = _pathsFromPlatformValue(value);
-      if (_didReceiveFinderSelection == false && paths.isNotEmpty) {
-        _replaceFiles(paths);
+      if (paths.isNotEmpty && (Platform.isWindows || _didReceiveFinderSelection == false)) {
+        _applyPlatformSelection(paths);
       }
     } on MissingPluginException {
       // Finder 拡張を含まない開発環境でも通常の画像追加を利用できる
@@ -173,11 +175,23 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Finder Sync の有効状態をメニューの次の操作へ反映する。
-  /// @param l10n Finder Sync の状態取得に使う表示情報
+  /// OS ごとの選択通知を一覧へ反映する。
+  /// @param paths 外部で選択された画像パス
+  void _applyPlatformSelection(List<String> paths) {
+    if (Platform.isWindows) {
+      _controller.addFiles(_supportedPaths(paths));
+      _controller.updateOutputPlans(_preferences.conversionSettings);
+    } else {
+      _replaceFiles(paths);
+    }
+  }
+
+  /// OS の右クリック連携の有効状態をヘッダーへ反映する。
   Future<void> _loadFinderSyncStatus() async {
     try {
-      final isEnabled = await _finderMethodChannel.invokeMethod<bool>('isFinderSyncExtensionEnabled');
+      final isEnabled = await _finderMethodChannel.invokeMethod<bool>(
+        Platform.isWindows ? 'isWindowsShellIntegrationEnabled' : 'isFinderSyncExtensionEnabled',
+      );
       if (mounted) {
         setState(() => _isFinderSyncEnabled = isEnabled ?? false);
       }
@@ -185,8 +199,8 @@ class HomeScreenState extends State<HomeScreen> {
       // Finder Sync を含まないプラットフォームでは通常のファイル追加を利用する
     } catch (error, stackTrace) {
       LoggingService.instance.warning(
-        'Failed to read Finder Sync status.',
-        tag: 'Finder',
+        'Failed to read shell integration status.',
+        tag: 'Shell',
         error: error,
         stackTrace: stackTrace,
       );
@@ -218,9 +232,9 @@ class HomeScreenState extends State<HomeScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final paths = _pendingFinderSelection;
           if (mounted && _controller.isCompressing == false && paths != null) {
-            // 置換もコントローラーの通知を発生させるため、保留値を先に消費する
+            // 一覧への反映もコントローラーの通知を発生させるため、保留値を先に消費する
             _pendingFinderSelection = null;
-            _replaceFiles(paths);
+            _applyPlatformSelection(paths);
           }
         });
       }
@@ -415,8 +429,13 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Finder Sync のシステム設定画面を開く。
+  /// OS の右クリック連携の設定を開く。
   Future<void> _openFinderSettings() async {
+    // Windows はアプリ内の設定で利用者ごとの登録を管理する
+    if (Platform.isWindows) {
+      await _openWindowsShellSettings();
+      return;
+    }
     try {
       await _finderMethodChannel.invokeMethod<void>('showFinderSyncExtensionManagement');
     } on MissingPluginException {
@@ -429,6 +448,75 @@ class HomeScreenState extends State<HomeScreen> {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  /// 現在の利用者に対する Explorer 連携を変更し、登録に成功した状態を表示する。
+  Future<void> _openWindowsShellSettings() async {
+    final l10n = AppLocalizations.of(context);
+    var isSaving = false;
+    String? errorMessage;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          constraints: const BoxConstraints(maxWidth: 480),
+          title: Text(l10n.windowsShellIntegration),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.windowsShellDescription),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.windowsShellEnabled),
+                  value: _isFinderSyncEnabled,
+                  onChanged: isSaving
+                      ? null
+                      : (isEnabled) async {
+                          // 登録処理が終わるまで次の切り替えを待つ
+                          setDialogState(() {
+                            isSaving = true;
+                            errorMessage = null;
+                          });
+                          try {
+                            await _finderMethodChannel.invokeMethod<void>(
+                              'setWindowsShellIntegrationEnabled',
+                              {'enabled': isEnabled, 'label': l10n.windowsShellMenuLabel},
+                            );
+                            // ネイティブ処理の成功後にヘッダーとスイッチへ反映する
+                            if (mounted) {
+                              setState(() => _isFinderSyncEnabled = isEnabled);
+                            }
+                          } catch (error, stackTrace) {
+                            // 失敗理由はログへ残し、ダイアログから再試行できるようにする
+                            LoggingService.instance.warning(
+                              'Failed to change Windows shell integration.',
+                              tag: 'Shell',
+                              error: error,
+                              stackTrace: stackTrace,
+                            );
+                            errorMessage = l10n.windowsShellFailed;
+                          } finally {
+                            // Esc などで閉じた場合も、表示中のダイアログだけを更新対象にする
+                            if (dialogContext.mounted) {
+                              setDialogState(() => isSaving = false);
+                            }
+                          }
+                        },
+                ),
+                if (errorMessage != null)
+                  Text(errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: isSaving ? null : () => Navigator.of(context).pop(), child: Text(l10n.close)),
+          ],
+        ),
+      ),
+    );
   }
 
   /// システム設定から戻ったときに Finder Sync の有効状態を読み直す。
@@ -559,7 +647,8 @@ class HomeScreenState extends State<HomeScreen> {
             HomeHeader(
               isCompressing: _controller.isCompressing,
               isFinderSyncEnabled: _isFinderSyncEnabled,
-              isFinderIntegrationAvailable: Platform.isMacOS,
+              isFinderIntegrationAvailable: Platform.isMacOS || Platform.isWindows,
+              isWindowsShellIntegration: Platform.isWindows,
               onAddFiles: _addFiles,
               onFinderSettings: _openFinderSettings,
               onMenuAction: _handleMenuAction,

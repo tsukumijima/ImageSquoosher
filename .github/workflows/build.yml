@@ -112,6 +112,24 @@ jobs:
         shell: pwsh
         run: ./tools/build_mozjpeg.ps1
 
+      - name: Run Windows Flutter tests
+        shell: pwsh
+        run: |
+          $env:IMAGE_SQUOOSHER_CJPEG = Join-Path $PWD 'native/mozjpeg/windows/cjpeg.exe'
+          flutter test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test Windows shell selection boundary
+        shell: pwsh
+        run: |
+          $nativeTestDirectory = Join-Path $env:RUNNER_TEMP 'image-squoosher-native-tests'
+          cmake -S windows/test -B $nativeTestDirectory -A x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build $nativeTestDirectory --config Debug
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir $nativeTestDirectory -C Debug --output-on-failure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run Windows desktop integration test
         shell: pwsh
         run: |

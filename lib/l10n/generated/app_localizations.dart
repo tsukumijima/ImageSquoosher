@@ -590,6 +590,36 @@ abstract class AppLocalizations {
   /// **'Finder 連携を有効化'**
   String get finderSyncEnable;
 
+  /// No description provided for @windowsShellIntegration.
+  ///
+  /// In ja, this message translates to:
+  /// **'Explorer 連携を管理'**
+  String get windowsShellIntegration;
+
+  /// No description provided for @windowsShellMenuLabel.
+  ///
+  /// In ja, this message translates to:
+  /// **'ImageSquoosher で圧縮・リサイズ'**
+  String get windowsShellMenuLabel;
+
+  /// No description provided for @windowsShellEnabled.
+  ///
+  /// In ja, this message translates to:
+  /// **'右クリックメニューに追加する'**
+  String get windowsShellEnabled;
+
+  /// No description provided for @windowsShellDescription.
+  ///
+  /// In ja, this message translates to:
+  /// **'Explorer で画像を右クリックし、［ImageSquoosher で圧縮・リサイズ］から画像を開けます。\nWindows 11 では［その他のオプションを確認］に表示されます。\n\n現在のユーザーだけに登録するため、管理者権限は不要です。アプリの保存場所を移動した場合は、移動先で連携を有効にしてください。'**
+  String get windowsShellDescription;
+
+  /// No description provided for @windowsShellFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'右クリック連携を変更できませんでした。もう一度お試しください。'**
+  String get windowsShellFailed;
+
   /// No description provided for @restoreDefaults.
   ///
   /// In ja, this message translates to:

@@ -57,7 +57,7 @@ void main() {
           didLoadFinderSelection = true;
           return inputPaths;
         }
-        if (call.method == 'isFinderSyncExtensionEnabled') {
+        if (call.method == 'isFinderSyncExtensionEnabled' || call.method == 'isWindowsShellIntegrationEnabled') {
           didLoadFinderSyncStatus = true;
           return false;
         }

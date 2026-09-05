@@ -7,6 +7,8 @@
 #include <flutter/standard_method_codec.h>
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "win32_window.h"
 
@@ -15,7 +17,9 @@ class FlutterWindow : public Win32Window {
  public:
   /// 表示する Flutter プロジェクトを保持する。
   /// @param project ウィンドウ内で実行する Dart プロジェクト
-  explicit FlutterWindow(const flutter::DartProject& project);
+  /// @param selected_paths Explorer から渡された初期選択
+  explicit FlutterWindow(const flutter::DartProject& project,
+                         const std::vector<std::wstring>& selected_paths = {});
   /// Flutter のビューとチャネルを含むメンバーを破棄する。
   virtual ~FlutterWindow();
 
@@ -35,6 +39,10 @@ class FlutterWindow : public Win32Window {
                          LPARAM const lparam) noexcept override;
 
  private:
+  // Explorer の連続起動をまとめ、Dart が受信可能になってから通知する
+  std::vector<std::wstring> pending_selection_;
+  bool is_selection_listener_ready_ = false;
+
   // ウィンドウ内で実行するプロジェクト
   flutter::DartProject project_;
 

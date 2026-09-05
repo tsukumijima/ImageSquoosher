@@ -67,7 +67,7 @@ An input that already ends in a sequence number keeps the sequence after the suf
 
 **Overwrite original files** is an explicit destructive option and is reset to off every time the app starts.
 
-While overwrite is enabled, the suffix field directly below it is disabled. Its value is preserved and becomes available again when overwrite is turned off.
+While overwrite is enabled, the suffix field below Quality is disabled. Its value is preserved and becomes available again when overwrite is turned off.
 
 For JPEG input, ImageSquoosher writes the conversion to a separate temporary path, verifies that MozJPEG succeeded and that the result is a valid JPEG with the requested dimensions, then atomically replaces the source file. A failure leaves the source file in place.
 
@@ -77,6 +77,14 @@ Creation and modification timestamps are copied from the source on both macOS an
 
 > [!WARNING]
 > Keep overwrite disabled until you have checked the output with representative images. Non-overwrite mode keeps every source image and is the default.
+
+## Explorer integration on Windows
+
+Open **Manage Explorer integration** using the puzzle button in the upper-right corner and enable **Add to the context menu**. Select JPEG, PNG, or WebP images in Explorer, then right-click and choose **Compress and resize with ImageSquoosher** to add those images to the queue. On Windows 11, open **Show more options** first.
+
+Images received during conversion are collected and added when the batch finishes or stops. Choose **Convert** to process the added images.
+
+Registration applies to the current user and requires no administrator rights. If you move the app folder, enable integration again from its new location. Turn this setting off before deleting the app to remove the context menu entry.
 
 ## Finder integration on macOS
 
@@ -185,4 +193,3 @@ The workflow imports signing material into a temporary keychain, signs the neste
 ## License
 
 [MIT License](License.txt)
-

@@ -266,6 +266,22 @@ class AppLocalizationsJa extends AppLocalizations {
   String get finderSyncEnable => 'Finder 連携を有効化';
 
   @override
+  String get windowsShellIntegration => 'Explorer 連携を管理';
+
+  @override
+  String get windowsShellMenuLabel => 'ImageSquoosher で圧縮・リサイズ';
+
+  @override
+  String get windowsShellEnabled => '右クリックメニューに追加する';
+
+  @override
+  String get windowsShellDescription =>
+      'Explorer で画像を右クリックし、［ImageSquoosher で圧縮・リサイズ］から画像を開けます。\nWindows 11 では［その他のオプションを確認］に表示されます。\n\n現在のユーザーだけに登録するため、管理者権限は不要です。アプリの保存場所を移動した場合は、移動先で連携を有効にしてください。';
+
+  @override
+  String get windowsShellFailed => '右クリック連携を変更できませんでした。もう一度お試しください。';
+
+  @override
   String get restoreDefaults => '変換設定を既定値に戻す';
 
   @override

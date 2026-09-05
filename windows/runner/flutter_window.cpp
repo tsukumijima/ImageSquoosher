@@ -3,13 +3,17 @@
 #include <windows.h>
 
 #include <cstdint>
+#include <algorithm>
 #include <optional>
 #include <string>
 #include <variant>
 
 #include "flutter/generated_plugin_registrant.h"
+#include "shell_integration.h"
 
 namespace {
+constexpr UINT_PTR kSelectionTimer = 0x4953;
+constexpr UINT kSelectionDelayMs = 250;
 
 constexpr char kFileOperationsChannelName[] =
     "net.tsukumijima.image-squoosher/finder_sync";
@@ -107,13 +111,18 @@ bool ReplaceStagedOutputAtomically(const std::wstring& staged_output_path,
 
 }  // namespace
 
-FlutterWindow::FlutterWindow(const flutter::DartProject& project)
-    : project_(project) {}
+FlutterWindow::FlutterWindow(const flutter::DartProject& project,
+                             const std::vector<std::wstring>& selected_paths)
+    : pending_selection_(selected_paths), project_(project) {}
 
 FlutterWindow::~FlutterWindow() {}
 
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
+    return false;
+  }
+  // 初期化中の後続起動も、このウィンドウへ選択を送れる状態にする
+  if (!SetPropW(GetHandle(), shell_integration::kWindowProperty, reinterpret_cast<HANDLE>(1))) {
     return false;
   }
 
@@ -136,8 +145,63 @@ bool FlutterWindow::OnCreate() {
           &flutter::StandardMethodCodec::GetInstance());
   file_operations_channel_->SetMethodCallHandler(
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
-         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
-             result) {
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                 result) {
+        if (call.method_name() == "getFinderSelectedImageURLs") {
+          is_selection_listener_ready_ = true;
+          // 起動中に届いた複数ファイルも最初の通知へまとめる
+          if (!pending_selection_.empty()) {
+            SetTimer(GetHandle(), kSelectionTimer, kSelectionDelayMs, nullptr);
+          }
+          result->Success(flutter::EncodableValue(flutter::EncodableList{}));
+          return;
+        }
+        if (call.method_name() == "isWindowsShellIntegrationEnabled") {
+          result->Success(
+              flutter::EncodableValue(shell_integration::IsEnabled()));
+          return;
+        }
+        if (call.method_name() == "setWindowsShellIntegrationEnabled") {
+          const auto* arguments =
+              call.arguments() == nullptr
+                  ? nullptr
+                  : std::get_if<flutter::EncodableMap>(call.arguments());
+          const bool* is_enabled = nullptr;
+          const std::string* label = nullptr;
+          if (arguments != nullptr) {
+            const auto entry =
+                arguments->find(flutter::EncodableValue("enabled"));
+            if (entry != arguments->end()) {
+              is_enabled = std::get_if<bool>(&entry->second);
+            }
+            const auto label_entry =
+                arguments->find(flutter::EncodableValue("label"));
+            if (label_entry != arguments->end()) {
+              label = std::get_if<std::string>(&label_entry->second);
+            }
+          }
+          if (is_enabled == nullptr) {
+            result->Error("INVALID_ARGS", "Missing enabled flag.");
+            return;
+          }
+          const auto menu_label =
+              label == nullptr ? std::wstring() : Utf8ToWide(*label);
+          if (*is_enabled && menu_label.empty()) {
+            result->Error("INVALID_ARGS", "Missing menu label.");
+            return;
+          }
+          const LSTATUS status =
+              shell_integration::SetEnabled(*is_enabled, menu_label);
+          if (status != ERROR_SUCCESS) {
+            result->Error(
+                "SHELL_INTEGRATION_FAILED",
+                "Could not update Explorer integration.",
+                flutter::EncodableValue(static_cast<int64_t>(status)));
+          } else {
+            result->Success();
+          }
+          return;
+        }
         if (call.method_name() == "centerOnPointerScreen") {
           if (CenterOnPointerScreen()) {
             result->Success();
@@ -227,6 +291,10 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  if (GetHandle() != nullptr) {
+    KillTimer(GetHandle(), kSelectionTimer);
+    RemovePropW(GetHandle(), shell_integration::kWindowProperty);
+  }
   // チャネルを先に閉じてからエンジンとビューを解放する
   file_operations_channel_.reset();
   if (flutter_controller_) {
@@ -240,6 +308,42 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // Explorer がファイルごとに起動したプロセスからの選択を受け取る
+  if (message == WM_COPYDATA && lparam != 0) {
+    const auto& data = *reinterpret_cast<const COPYDATASTRUCT*>(lparam);
+    if (data.dwData != shell_integration::kSelectionMessage) {
+      return FALSE;
+    }
+    const auto paths = shell_integration::DecodeSelection(data);
+    for (const auto& path : paths) {
+      if (std::none_of(pending_selection_.begin(), pending_selection_.end(),
+                       [&](const auto& existing) {
+                         return _wcsicmp(existing.c_str(), path.c_str()) == 0;
+                       })) {
+        pending_selection_.push_back(path);
+      }
+    }
+    if (is_selection_listener_ready_ && !pending_selection_.empty()) {
+      SetTimer(hwnd, kSelectionTimer, kSelectionDelayMs, nullptr);
+    }
+    return TRUE;
+  }
+  // 最後の受信から一定時間空いた時点で、選択一覧を1回の通知にまとめる
+  if (message == WM_TIMER && wparam == kSelectionTimer) {
+    KillTimer(hwnd, kSelectionTimer);
+    if (is_selection_listener_ready_ && file_operations_channel_ &&
+        !pending_selection_.empty()) {
+      flutter::EncodableList paths;
+      for (const auto& path : pending_selection_) {
+        paths.emplace_back(shell_integration::ToUtf8(path));
+      }
+      pending_selection_.clear();
+      file_operations_channel_->InvokeMethod(
+          "finderSelectedImageURLs",
+          std::make_unique<flutter::EncodableValue>(paths));
+    }
+    return 0;
+  }
   // プラグインを含む Flutter 側へ先にウィンドウメッセージを渡す
   if (flutter_controller_) {
     std::optional<LRESULT> result =

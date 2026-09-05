@@ -104,11 +104,13 @@ void main() {
   /// ネイティブから Dart へ届く選択通知を送信する。
   /// @param selection Finder で選択された画像パス
   Future<void> sendSelection(List<String> selection) async {
-    await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
-      channel.name,
-      const StandardMethodCodec().encodeMethodCall(MethodCall('finderSelectedImageURLs', selection)),
-      (_) {},
-    );
+    await TestWidgetsFlutterBinding.instance.runAsync(() async {
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        channel.name,
+        const StandardMethodCodec().encodeMethodCall(MethodCall('finderSelectedImageURLs', selection)),
+        (_) {},
+      );
+    });
   }
 
   /// Finder の受信ハンドラーを有効にした画面を構築する。
@@ -137,20 +139,40 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('待機中の Finder 選択は直ちに一覧を置き換える', (tester) async {
+  /// 入力検査と表示画像の読み込みが完了した後に、一時画像を解放する。
+  Future<void> finishImageReads(WidgetTester tester, SquoosherController controller) async {
+    // 実 I/O のイベントとテスト時計の継続処理を両方進め、読み込み完了まで待つ
+    while (controller.images.any((item) => item.sourceDimensions == null && item.isInputValid)) {
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+    }
+    await tester.pump();
+    final previews = find.byType(Image).evaluate().toList();
+    var hasLoaded = false;
+    Future.wait(
+      previews.map((element) => precacheImage((element.widget as Image).image, element)),
+    ).then((_) => hasLoaded = true);
+    while (!hasLoaded) {
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+  }
+
+  testWidgets('待機中の選択通知を OS の一覧操作へ反映する', (tester) async {
     final engine = _ControlledEngine();
     final controller = _RecordingController(engine);
     addTearDown(controller.dispose);
     await pumpHome(tester, controller);
     await sendSelection([paths[1], paths[2]]);
     expect(controller.images.map((queuedImage) => queuedImage.path), [paths[1], paths[2]]);
-    expect(controller.replacementCount, 1);
+    expect(controller.replacementCount, Platform.isWindows ? 0 : 1);
     expect(engine.startCount, 0);
-    await tester.pumpWidget(const SizedBox.shrink());
+    await finishImageReads(tester, controller);
   });
 
   for (final shouldStop in [false, true]) {
-    testWidgets('変換${shouldStop ? '停止' : '完了'}後に最新の Finder 選択を一度だけ反映する', (tester) async {
+    testWidgets('変換${shouldStop ? '停止' : '完了'}後に保留した選択を OS の一覧操作へ反映する', (tester) async {
       final engine = _ControlledEngine();
       final controller = _RecordingController(engine);
       addTearDown(controller.dispose);
@@ -172,7 +194,9 @@ void main() {
 
       // 連続して選択しても、実行中の画像と処理状態を完了まで保持する
       await sendSelection([paths[1]]);
-      await sendSelection([paths[1], paths[2]]);
+      // Explorer の起動間隔が空いても、先に届いた画像を保持する
+      await tester.pump(const Duration(milliseconds: 500));
+      await sendSelection(Platform.isWindows ? [paths[2]] : [paths[1], paths[2]]);
       expect(controller.images.single.path, paths[0]);
       expect(controller.images.single.status, QueuedImageStatus.processing);
       if (shouldStop) {
@@ -188,8 +212,11 @@ void main() {
       });
       await tester.pump();
 
-      expect(controller.images.map((queuedImage) => queuedImage.path), [paths[1], paths[2]]);
-      expect(controller.replacementCount, 1);
+      expect(
+        controller.images.map((queuedImage) => queuedImage.path),
+        Platform.isWindows ? paths : [paths[1], paths[2]],
+      );
+      expect(controller.replacementCount, Platform.isWindows ? 0 : 1);
       expect(controller.isCompressing, isFalse);
       expect(controller.lastRunWasStopped, shouldStop);
       expect(engine.startCount, 1);
@@ -199,7 +226,21 @@ void main() {
         find.text(shouldStop ? '変換を停止しました。\n完了した画像は保存されています。' : '1件の画像を変換できました。\nファイルや保存先は一覧から開けます。'),
         findsOneWidget,
       );
-      await tester.pumpWidget(const SizedBox.shrink());
+      await finishImageReads(tester, controller);
     });
   }
+
+  testWidgets('Explorer の選択が複数回に分かれて届いても既存画像と全選択を保持する', (tester) async {
+    final controller = _RecordingController(_ControlledEngine());
+    addTearDown(controller.dispose);
+    await pumpHome(tester, controller);
+    await sendSelection([paths[0]]);
+    await tester.pump(const Duration(milliseconds: 500));
+    await sendSelection([paths[1]]);
+    await tester.pump(const Duration(milliseconds: 500));
+    await sendSelection([paths[1], paths[2]]);
+    expect(controller.images.map((queuedImage) => queuedImage.path), paths);
+    expect(controller.replacementCount, 0);
+    await finishImageReads(tester, controller);
+  }, skip: !Platform.isWindows);
 }

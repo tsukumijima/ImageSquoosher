@@ -266,6 +266,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get finderSyncEnable => 'Enable Finder Sync';
 
   @override
+  String get windowsShellIntegration => 'Manage Explorer integration';
+
+  @override
+  String get windowsShellMenuLabel => 'Compress and resize with ImageSquoosher';
+
+  @override
+  String get windowsShellEnabled => 'Add to the context menu';
+
+  @override
+  String get windowsShellDescription =>
+      'Right-click images in Explorer and choose Compress and resize with ImageSquoosher to add them.\nOn Windows 11, choose Show more options first.\n\nRegistration applies to the current user and requires no administrator rights. If you move the app, enable integration again from its new location.';
+
+  @override
+  String get windowsShellFailed => 'Could not change Explorer integration. Please try again.';
+
+  @override
   String get restoreDefaults => 'Restore conversion defaults';
 
   @override
