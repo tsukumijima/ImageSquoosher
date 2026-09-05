@@ -38,15 +38,20 @@ Animated PNG and WebP files are rejected. ImageSquoosher does not silently switc
 
 1. Drop images into the window or choose **Add images**.
 2. Review the output size and filename shown for each image.
-3. Adjust the crop ratio, resize axis and pixels, JPEG quality, metadata option, and filename suffix.
+3. Adjust quality, filename suffix, aspect ratio, resize options, and metadata settings.
 4. Choose **Convert**.
 5. Open the completed output from the image row or reveal its folder.
 
 The crop is always centered. You can keep the source aspect ratio, choose a preset ratio, or enter a custom horizontal-to-vertical ratio. Resizing uses the selected width or height while preserving the cropped aspect ratio.
 
 Only the image list scrolls; the settings and list heading stay in place. **Add images** is in the upper-right header, **Clear selection** is above the list, and **Convert** and **Stop** stay at the bottom.
+**Add images** uses the accent color. **Add images**, **Clear selection**, **Convert**, and **Stop** share the same height and show a ripple when pressed. Select fields and their options use the body text font.
 
 Each fixed-height row shows input and output filenames and sizes on the first line, with dimensions and aspect ratios below. Status badges include an icon and label. Completed rows retain their green progress bars and size reduction, using the same green as success notifications. Output folders can be opened before conversion.
+
+Image cards brighten on hover. Double-click a card to open the source file in your default viewer; use **Open file** at the lower right of the card to open the converted file. A notification appears if overwriting or another action has removed the source file.
+
+Notifications separate the result from additional guidance with a line break and use relaxed line spacing.
 
 Click the ratio or resize-axis field to open its options. While the list is open, use the arrow keys and Enter to select an option, or Esc to close the list.
 
