@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_squoosher/l10n/generated/app_localizations.dart';
 import 'package:image_squoosher/models/conversion_settings.dart';
@@ -46,6 +47,7 @@ void main() {
                 ),
                 settings: const ConversionSettings(),
                 canRemove: status != QueuedImageStatus.processing,
+                onOpenSourceFile: () {},
                 onOpenFile: () {},
                 onOpenFolder: () {},
                 onRemove: () {},
@@ -86,6 +88,79 @@ void main() {
         expect(find.text('6192×4128 (3:2) → 1920×1280 (3:2)'), findsOneWidget);
       }
     }
+  });
+
+  testWidgets('カードのダブルクリックで元画像を開き、操作ボタンとは独立する', (tester) async {
+    var sourceOpenCount = 0;
+    var outputOpenCount = 0;
+    var folderOpenCount = 0;
+    var removeCount = 0;
+    for (final status in QueuedImageStatus.values) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(Colors.blue),
+          locale: const Locale('ja'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: QueuedImageRow(
+              queuedImage: QueuedImage(path: '/tmp/source.jpg', status: status),
+              settings: const ConversionSettings(),
+              canRemove: status != QueuedImageStatus.processing,
+              onOpenSourceFile: () => sourceOpenCount++,
+              onOpenFile: () => outputOpenCount++,
+              onOpenFolder: () => folderOpenCount++,
+              onRemove: () => removeCount++,
+            ),
+          ),
+        ),
+      );
+      final card = find.byType(Card);
+      final point = tester.getTopLeft(card) + const Offset(100, 10);
+      final previousSourceCount = sourceOpenCount;
+      await tester.tapAt(point);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(sourceOpenCount, previousSourceCount);
+      await tester.tapAt(point);
+      await tester.pump(const Duration(milliseconds: 80));
+      await tester.tapAt(point);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(sourceOpenCount, previousSourceCount + 1);
+      final ink = tester.widget<InkWell>(find.descendant(of: card, matching: find.byType(InkWell)).first);
+      expect(ink.splashFactory, InkRipple.splashFactory);
+      expect(ink.hoverColor!.a, 0.06);
+      // 有効・無効なボタンのどちらも、元画像を開く操作と独立して扱う
+      for (final icon in [Icons.open_in_new, Icons.folder_open, Icons.close]) {
+        final button = find.widgetWithIcon(IconButton, icon);
+        final previousCounts = [outputOpenCount, folderOpenCount, removeCount];
+        await tester.tap(button);
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(
+          outputOpenCount,
+          previousCounts[0] + (icon == Icons.open_in_new && status == QueuedImageStatus.completed ? 1 : 0),
+        );
+        expect(folderOpenCount, previousCounts[1] + (icon == Icons.folder_open ? 1 : 0));
+        expect(
+          removeCount,
+          previousCounts[2] + (icon == Icons.close && status != QueuedImageStatus.processing ? 1 : 0),
+        );
+        await tester.tap(button);
+        await tester.pump(const Duration(milliseconds: 80));
+        await tester.tap(button);
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(sourceOpenCount, previousSourceCount + 1);
+      }
+      expect(tester.takeException(), isNull);
+    }
+    expect(outputOpenCount, greaterThan(0));
+    expect(folderOpenCount, greaterThan(0));
+    expect(removeCount, greaterThan(0));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(find.byType(Card)));
+    await tester.pumpAndSettle();
+    await mouse.removePointer();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('任意の元比率とカスタム比率はリサイズの丸め後も短い表記を維持する', (tester) async {
@@ -131,6 +206,7 @@ void main() {
               ),
               settings: settings,
               canRemove: true,
+              onOpenSourceFile: () {},
               onOpenFile: () {},
               onOpenFolder: () {},
               onRemove: () {},
@@ -170,6 +246,17 @@ void main() {
       tester.getBottomRight(indicator).dy,
       tester.getBottomRight(find.byType(Scaffold)).dy,
     );
+    // 上の区切り線と下の進捗バーの間で、ボタンの上下余白とフッター全体の高さを保つ
+    final footerBounds = tester.getRect(find.byType(CompressionFooter));
+    final buttonBounds = tester.getRect(
+      find.descendant(
+        of: find.byWidgetPredicate((widget) => widget is FilledButton),
+        matching: find.byType(Material),
+      ),
+    );
+    expect(buttonBounds.top - footerBounds.top - 1, 9);
+    expect(tester.getTopLeft(indicator).dy - buttonBounds.bottom, 9);
+    expect(footerBounds.height, 60);
     expect(tester.takeException(), isNull);
   });
 }

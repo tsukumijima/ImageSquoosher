@@ -57,17 +57,8 @@ class HomeHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          // 追加と解除は中立色でそろえ、変換開始のアクセント色を主要操作として保つ
-          FilledButton.tonalIcon(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-              foregroundColor: Theme.of(context).colorScheme.onSurface,
-              iconColor: Theme.of(context).colorScheme.onSurface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              minimumSize: const Size(0, 32),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
+          // 画像追加をアクセント色で示し、主要操作に共通のボタン寸法を使う
+          FilledButton.icon(
             onPressed: isCompressing ? null : onAddFiles,
             icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
             label: Text(l10n.addFiles, maxLines: 1),

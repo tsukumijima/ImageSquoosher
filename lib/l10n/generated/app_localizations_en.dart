@@ -117,7 +117,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get compressionUnavailable => 'Compression will start after an image engine is connected';
 
   @override
-  String get clearConfirmation => 'All images removed from the list. No files were deleted by this action.';
+  String get clearConfirmation => 'All images removed from the list.\nNo files were deleted by this action.';
 
   @override
   String get replaceFiles => 'Replace list';
@@ -177,7 +177,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get outputSaved => 'Saved';
 
   @override
-  String get filesAdded => 'Images added. Check your settings when you are ready to convert.';
+  String get filesAdded => 'Images added.\nCheck your settings when you are ready to convert.';
 
   @override
   String get duplicateFilesSkipped => 'Duplicate images were skipped.';
@@ -222,7 +222,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String statusCompleted(Object completed, Object failed) {
-    return 'Converted $completed images. Please check the list for $failed images that could not be converted.';
+    return 'Converted $completed images.\nPlease check the list for $failed images that could not be converted.';
   }
 
   @override
@@ -306,7 +306,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String conversionSucceeded(int count) {
-    return 'Converted $count images. You can open the files or their folders from the list.';
+    return 'Converted $count images.\nYou can open the files or their folders from the list.';
   }
 
   @override
@@ -323,10 +323,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get licenses => 'View licenses';
 
   @override
-  String get openFileFailed => 'Could not open the file. Please check that it exists in the output folder.';
+  String get openFileFailed => 'Could not open the file.\nPlease check that it exists in the output folder.';
 
   @override
-  String get openFolderFailed => 'Could not open the folder. Please check that it still exists.';
+  String get openSourceFileFailed =>
+      'Could not open the source file.\nPlease check that it has not been moved or deleted.';
+
+  @override
+  String get openFolderFailed => 'Could not open the folder.\nPlease check that it still exists.';
 
   @override
   String get defaultsRestored => 'Conversion settings restored to their defaults.';

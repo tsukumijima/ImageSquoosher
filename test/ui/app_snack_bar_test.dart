@@ -30,9 +30,15 @@ void main() {
       for (final message in messages.entries) {
         expect(message.value, endsWith(language == 'ja' ? '。' : '.'), reason: message.key);
       }
+      // 解除後の補足を独立した行へ置き、ファイルの扱いを文の先頭から読めるようにする
+      expect(l10n.clearConfirmation, contains(language == 'ja' ? '。\nこの操作で' : '.\n'));
     });
 
-    testWidgets('$language の成功・失敗・案内通知を固有の色とアイコンで表示する', (tester) async {
+    testWidgets('$language の成功・失敗・案内通知は最小幅でも本文と閉じるボタンが収まる', (tester) async {
+      tester.view.physicalSize = const Size(520, 560);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       late BuildContext notificationContext;
       await tester.pumpWidget(
         MaterialApp(
@@ -53,7 +59,7 @@ void main() {
       final l10n = AppLocalizations.of(notificationContext);
       final cases = [
         (AppNoticeKind.success, const Color(0xff4caf50), Icons.check_circle, l10n.conversionSucceeded(3)),
-        (AppNoticeKind.error, const Color(0xffff5252), Icons.cancel, l10n.compressionFailed),
+        (AppNoticeKind.error, const Color(0xffff5252), Icons.cancel, l10n.statusCompleted(2, 1)),
         (AppNoticeKind.info, const Color(0xff2196f3), Icons.info, l10n.clearConfirmation),
       ];
       for (final (kind, color, icon, message) in cases) {
@@ -66,6 +72,24 @@ void main() {
         expect(snackBar.backgroundColor, color);
         expect((snackBar.shape! as RoundedRectangleBorder).side, BorderSide.none);
         expect(find.text(l10n.close), findsOneWidget);
+
+        // 本文の行間と閉じる操作の位置を実描画領域で比べ、長文も通知の枠内へ収める
+        final messageText = find.text(message);
+        expect(tester.widget<Text>(messageText).style!.height, 1.6);
+        final messageBounds = tester.getRect(messageText);
+        expect(message, contains('\n'));
+        expect(messageBounds.height, greaterThan(40));
+        final closeBounds = tester.getRect(
+          find.ancestor(of: find.text(l10n.close), matching: find.byType(TextButton)),
+        );
+        final snackBarBounds = tester.getRect(find.byType(SnackBar));
+        expect(messageBounds.right, lessThanOrEqualTo(closeBounds.left));
+        expect(messageBounds.top, greaterThanOrEqualTo(snackBarBounds.top));
+        expect(messageBounds.bottom, lessThanOrEqualTo(snackBarBounds.bottom));
+        expect(closeBounds.right, lessThanOrEqualTo(snackBarBounds.right));
+        expect(closeBounds.top, greaterThanOrEqualTo(snackBarBounds.top));
+        expect(closeBounds.bottom, lessThanOrEqualTo(snackBarBounds.bottom));
+        expect(tester.takeException(), isNull);
         await tester.tap(find.text(l10n.close));
         await tester.pumpAndSettle();
         expect(find.byType(SnackBar), findsNothing);

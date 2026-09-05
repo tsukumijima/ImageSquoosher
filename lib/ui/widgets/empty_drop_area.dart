@@ -38,7 +38,7 @@ class EmptyDropArea extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               // 更新バナーで一覧が低くなった場合は、追加操作を残して説明をツールチップへまとめる
-              final isCompact = constraints.maxHeight < 110;
+              final isCompact = constraints.maxHeight < 96;
               return Tooltip(
                 message: isCompact ? l10n.emptyDescription : '',
                 child: Padding(

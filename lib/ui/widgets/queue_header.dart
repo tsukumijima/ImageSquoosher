@@ -22,7 +22,7 @@ class QueueHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 12, 2),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
         children: [
           Expanded(
@@ -41,16 +41,12 @@ class QueueHeader extends StatelessWidget {
               ],
             ),
           ),
-          // 画像の追加と同じ意匠で、一覧に対する補助操作として表示する
+          // 画像追加と高さをそろえ、一覧の補助操作を中立色で表示する
           FilledButton.tonalIcon(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
               foregroundColor: Theme.of(context).colorScheme.onSurface,
               iconColor: Theme.of(context).colorScheme.onSurface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              minimumSize: const Size(0, 32),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
             onPressed: canClear ? onClear : null,
             icon: const Icon(Icons.clear_all, size: 18),

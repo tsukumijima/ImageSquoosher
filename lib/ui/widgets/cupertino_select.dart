@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Theme;
 import 'package:flutter/services.dart';
 
 /// デスクトップ向けの小さなポップアップで値を選ぶ Cupertino コントロールです。
@@ -36,9 +37,8 @@ class _CupertinoSelectState<T extends Object> extends State<CupertinoSelect<T>> 
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onChanged != null;
-    final theme = CupertinoTheme.of(context);
-    final textStyle = theme.textTheme.textStyle.copyWith(
-      fontSize: 14,
+    // 選択値も入力欄と同じ本文フォントで表示する
+    final textStyle = Theme.of(context).textTheme.bodyMedium!.copyWith(
       color: CupertinoDynamicColor.resolve(isEnabled ? CupertinoColors.label : CupertinoColors.tertiaryLabel, context),
     );
     return RawMenuAnchor(
@@ -219,7 +219,7 @@ class _CupertinoSelectItemState extends State<_CupertinoSelectItem> {
                   widget.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.textStyle.copyWith(fontSize: 14, color: foreground),
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: foreground),
                 ),
               ),
             ],

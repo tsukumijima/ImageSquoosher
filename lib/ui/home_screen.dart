@@ -436,16 +436,26 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 完成した JPEG を既定のアプリケーションで開きます。
-  Future<void> _openOutputFile(QueuedImage queuedImage) async {
-    if (queuedImage.outputPath == null) {
+  /// カードの元画像と操作ボタンの出力画像を、それぞれ既定のアプリケーションで開きます。
+  Future<void> _openImageFile(QueuedImage queuedImage, {required bool isSource}) async {
+    final path = isSource ? queuedImage.path : queuedImage.outputPath;
+    if (path == null) {
       return;
     }
+    final l10n = AppLocalizations.of(context);
+    final errorMessage = isSource ? l10n.openSourceFileFailed : l10n.openFileFailed;
     try {
-      final opened = await launchUrl(Uri.file(queuedImage.outputPath!), mode: LaunchMode.externalApplication);
-      if (!opened && mounted) _showMessage(AppLocalizations.of(context).openFileFailed, kind: AppNoticeKind.error);
-    } catch (error) {
-      if (mounted) _showMessage(AppLocalizations.of(context).openFileFailed, kind: AppNoticeKind.error);
+      // 上書きや外部操作で元画像がなくなった場合も、選ばれたファイルの状態を通知する
+      final opened = await File(path).exists() && await launchUrl(Uri.file(path), mode: LaunchMode.externalApplication);
+      if (!opened && mounted) _showMessage(errorMessage, kind: AppNoticeKind.error);
+    } catch (error, stackTrace) {
+      LoggingService.instance.warning(
+        'Failed to open image file.',
+        tag: 'Home',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) _showMessage(errorMessage, kind: AppNoticeKind.error);
     }
   }
 
@@ -566,7 +576,7 @@ class HomeScreenState extends State<HomeScreen> {
                         child: ListView.separated(
                           key: const ValueKey('image-queue-list'),
                           controller: _queueScrollController,
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 25),
                           itemCount: _controller.images.length,
                           separatorBuilder: (context, index) => const SizedBox(height: 6),
                           itemBuilder: (context, index) {
@@ -576,7 +586,8 @@ class HomeScreenState extends State<HomeScreen> {
                               queuedImage: queuedImage,
                               settings: _preferences.conversionSettings,
                               canRemove: _controller.isCompressing == false,
-                              onOpenFile: () => _openOutputFile(queuedImage),
+                              onOpenSourceFile: () => _openImageFile(queuedImage, isSource: true),
+                              onOpenFile: () => _openImageFile(queuedImage, isSource: false),
                               onOpenFolder: () => _openOutputFolder(queuedImage),
                               onRemove: () => _controller.removeFile(queuedImage.path),
                             );

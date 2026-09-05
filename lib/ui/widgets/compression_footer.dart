@@ -84,7 +84,7 @@ class CompressionFooter extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
             child: Row(
               children: [
                 Icon(statusIcon, size: 18, color: statusColor),
@@ -98,35 +98,21 @@ class CompressionFooter extends StatelessWidget {
                   ),
                 ),
                 if (isCompressing)
-                  CupertinoButton.tinted(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    minimumSize: const Size(0, 34),
-                    borderRadius: BorderRadius.circular(8),
-                    onPressed: isStopping ? null : onStop,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(CupertinoIcons.stop_circle, size: 18),
-                        const SizedBox(width: 8),
-                        Text(l10n.stop, maxLines: 1),
-                      ],
+                  FilledButton.tonalIcon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                      foregroundColor: colorScheme.onSurface,
+                      iconColor: colorScheme.onSurface,
                     ),
+                    onPressed: isStopping ? null : onStop,
+                    icon: const Icon(CupertinoIcons.stop_circle, size: 18),
+                    label: Text(l10n.stop, maxLines: 1),
                   )
                 else
-                  CupertinoButton.filled(
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    minimumSize: const Size(0, 34),
-                    borderRadius: BorderRadius.circular(8),
+                  FilledButton.icon(
                     onPressed: hasValidImages ? onStart : null,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(CupertinoIcons.arrow_down_right_arrow_up_left, size: 18),
-                        const SizedBox(width: 8),
-                        Text(l10n.start, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
+                    icon: const Icon(CupertinoIcons.arrow_down_right_arrow_up_left, size: 18),
+                    label: Text(l10n.start, maxLines: 1),
                   ),
               ],
             ),

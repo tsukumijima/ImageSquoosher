@@ -36,7 +36,7 @@ void showAppSnackBar(BuildContext context, String message, {AppNoticeKind kind =
             Icon(icon, color: Colors.white, size: 24),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(message, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.25)),
+              child: Text(message, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.6)),
             ),
             const SizedBox(width: 16),
             TextButton(

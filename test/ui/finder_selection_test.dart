@@ -180,7 +180,10 @@ void main() {
       expect(engine.startCount, 1);
       expect(paths.every((path) => File(path).existsSync()), isTrue);
       expect(image.decodeJpg(File('${temporaryDirectory.path}/converted.jpg').readAsBytesSync()), isNotNull);
-      expect(find.text(shouldStop ? '変換を停止しました。完了した画像は保存されています。' : '1件の画像を変換できました。ファイルや保存先は一覧から開けます。'), findsOneWidget);
+      expect(
+        find.text(shouldStop ? '変換を停止しました。\n完了した画像は保存されています。' : '1件の画像を変換できました。\nファイルや保存先は一覧から開けます。'),
+        findsOneWidget,
+      );
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }

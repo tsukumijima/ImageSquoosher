@@ -209,7 +209,7 @@ abstract class AppLocalizations {
   /// No description provided for @releaseOpenFailed.
   ///
   /// In ja, this message translates to:
-  /// **'ページを開けませんでした。時間をおいて、もう一度お試しください。'**
+  /// **'ページを開けませんでした。\n時間をおいて、もう一度お試しください。'**
   String get releaseOpenFailed;
 
   /// No description provided for @dismiss.
@@ -311,7 +311,7 @@ abstract class AppLocalizations {
   /// No description provided for @clearConfirmation.
   ///
   /// In ja, this message translates to:
-  /// **'画像をすべて一覧から外しました。この操作でファイルが削除されることはありません。'**
+  /// **'画像をすべて一覧から外しました。\nこの操作でファイルが削除されることはありません。'**
   String get clearConfirmation;
 
   /// No description provided for @replaceFiles.
@@ -413,13 +413,13 @@ abstract class AppLocalizations {
   /// No description provided for @compressionStopped.
   ///
   /// In ja, this message translates to:
-  /// **'変換を停止しました。完了した画像は保存されています。'**
+  /// **'変換を停止しました。\n完了した画像は保存されています。'**
   String get compressionStopped;
 
   /// No description provided for @compressionFailed.
   ///
   /// In ja, this message translates to:
-  /// **'画像を変換できませんでした。各画像のエラーをご確認ください。'**
+  /// **'画像を変換できませんでした。\n各画像のエラーをご確認ください。'**
   String get compressionFailed;
 
   /// No description provided for @outputSaved.
@@ -431,7 +431,7 @@ abstract class AppLocalizations {
   /// No description provided for @filesAdded.
   ///
   /// In ja, this message translates to:
-  /// **'画像を追加しました。設定を確認したら、変換を始められます。'**
+  /// **'画像を追加しました。\n設定を確認したら、変換を始められます。'**
   String get filesAdded;
 
   /// No description provided for @duplicateFilesSkipped.
@@ -449,13 +449,13 @@ abstract class AppLocalizations {
   /// No description provided for @selectImagesFailed.
   ///
   /// In ja, this message translates to:
-  /// **'画像を選択できませんでした。もう一度お試しください。'**
+  /// **'画像を選択できませんでした。\nもう一度お試しください。'**
   String get selectImagesFailed;
 
   /// No description provided for @dropFailed.
   ///
   /// In ja, this message translates to:
-  /// **'画像を追加できませんでした。もう一度お試しください。'**
+  /// **'画像を追加できませんでした。\nもう一度お試しください。'**
   String get dropFailed;
 
   /// No description provided for @settingsSaved.
@@ -497,7 +497,7 @@ abstract class AppLocalizations {
   /// No description provided for @checkFailed.
   ///
   /// In ja, this message translates to:
-  /// **'更新を確認できませんでした。時間をおいて、もう一度お試しください。'**
+  /// **'更新を確認できませんでした。\n時間をおいて、もう一度お試しください。'**
   String get checkFailed;
 
   /// No description provided for @statusWaiting.
@@ -515,7 +515,7 @@ abstract class AppLocalizations {
   /// No description provided for @statusCompleted.
   ///
   /// In ja, this message translates to:
-  /// **'{completed}件の画像を変換しました。{failed}件の画像でエラーが発生したため、一覧をご確認ください。'**
+  /// **'{completed}件の画像を変換しました。\n{failed}件の画像でエラーが発生したため、一覧をご確認ください。'**
   String statusCompleted(Object completed, Object failed);
 
   /// No description provided for @dimensionValue.
@@ -671,7 +671,7 @@ abstract class AppLocalizations {
   /// No description provided for @conversionSucceeded.
   ///
   /// In ja, this message translates to:
-  /// **'{count}件の画像を変換できました。ファイルや保存先は一覧から開けます。'**
+  /// **'{count}件の画像を変換できました。\nファイルや保存先は一覧から開けます。'**
   String conversionSucceeded(int count);
 
   /// No description provided for @compressionReduction.
@@ -695,13 +695,19 @@ abstract class AppLocalizations {
   /// No description provided for @openFileFailed.
   ///
   /// In ja, this message translates to:
-  /// **'ファイルを開けませんでした。保存先にファイルがあるかご確認ください。'**
+  /// **'ファイルを開けませんでした。\n保存先にファイルがあるかご確認ください。'**
   String get openFileFailed;
+
+  /// No description provided for @openSourceFileFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'元のファイルを開けませんでした。\nファイルが移動・削除されていないかご確認ください。'**
+  String get openSourceFileFailed;
 
   /// No description provided for @openFolderFailed.
   ///
   /// In ja, this message translates to:
-  /// **'保存先を開けませんでした。フォルダがあるかご確認ください。'**
+  /// **'保存先を開けませんでした。\nフォルダがあるかご確認ください。'**
   String get openFolderFailed;
 
   /// No description provided for @defaultsRestored.

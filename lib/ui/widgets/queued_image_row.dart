@@ -19,6 +19,7 @@ class QueuedImageRow extends StatelessWidget {
     required this.queuedImage,
     required this.settings,
     required this.canRemove,
+    required this.onOpenSourceFile,
     required this.onOpenFile,
     required this.onOpenFolder,
     required this.onRemove,
@@ -27,6 +28,7 @@ class QueuedImageRow extends StatelessWidget {
   final QueuedImage queuedImage;
   final ConversionSettings settings;
   final bool canRemove;
+  final VoidCallback onOpenSourceFile;
   final VoidCallback onOpenFile;
   final VoidCallback onOpenFolder;
   final VoidCallback onRemove;
@@ -232,111 +234,125 @@ class QueuedImageRow extends StatelessWidget {
       margin: EdgeInsets.zero,
       elevation: 0,
       clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 64,
-        child: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                child: Row(
-                  children: [
-                    _buildPreview(context),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 結果の数値を常に見せ、長いファイル名だけを省略する
-                          Tooltip(
-                            message: '$inputText → $outputName$resultText',
-                            child: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    inputText,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                                Text(' → ', style: metadataStyle),
-                                Flexible(
-                                  child: Text(
-                                    outputName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.labelMedium,
-                                  ),
-                                ),
-                                if (isCompleted)
-                                  Text(
-                                    resultText,
-                                    style: theme.textTheme.labelMedium?.copyWith(color: AppColors.success),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          // 操作ボタンを常設し、変換中も完了後も2行の高さと位置を保つ
-                          SizedBox(
-                            height: 26,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Tooltip(
-                                    message: hasFailed ? _errorText(l10n) : dimensionsText,
+      // ファイル一覧と同じダブルクリック操作に、ホバーと波紋の反応を添える
+      child: InkWell(
+        onDoubleTap: onOpenSourceFile,
+        splashFactory: InkRipple.splashFactory,
+        hoverColor: colorScheme.onSurface.withValues(alpha: 0.06),
+        child: SizedBox(
+          height: 64,
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  child: Row(
+                    children: [
+                      _buildPreview(context),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 結果の数値を常に見せ、長いファイル名だけを省略する
+                            Tooltip(
+                              message: '$inputText → $outputName$resultText',
+                              child: Row(
+                                children: [
+                                  Flexible(
                                     child: Text(
-                                      hasFailed ? _errorText(l10n) : dimensionsText,
+                                      inputText,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: metadataStyle?.copyWith(color: hasFailed ? AppColors.error : null),
+                                      style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
                                     ),
                                   ),
-                                ),
-                                _buildStatusBadge(context),
-                                const SizedBox(width: 6),
-                                IconButton(
-                                  onPressed: isCompleted ? onOpenFile : null,
-                                  tooltip: l10n.openFile,
-                                  icon: const Icon(Icons.open_in_new, size: 16),
-                                  constraints: const BoxConstraints.tightFor(width: 26, height: 26),
-                                  padding: EdgeInsets.zero,
-                                ),
-                                IconButton(
-                                  onPressed: onOpenFolder,
-                                  tooltip: l10n.openFolder,
-                                  icon: const Icon(Icons.folder_open, size: 17),
-                                  constraints: const BoxConstraints.tightFor(width: 26, height: 26),
-                                  padding: EdgeInsets.zero,
-                                ),
-                                IconButton(
-                                  onPressed: canRemove ? onRemove : null,
-                                  tooltip: l10n.removeItem,
-                                  icon: const Icon(Icons.close, size: 17),
-                                  constraints: const BoxConstraints.tightFor(width: 26, height: 26),
-                                  padding: EdgeInsets.zero,
-                                ),
-                              ],
+                                  Text(' → ', style: metadataStyle),
+                                  Flexible(
+                                    child: Text(
+                                      outputName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.labelMedium,
+                                    ),
+                                  ),
+                                  if (isCompleted)
+                                    Text(
+                                      resultText,
+                                      style: theme.textTheme.labelMedium?.copyWith(color: AppColors.success),
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                            // 操作ボタンを常設し、変換中も完了後も2行の高さと位置を保つ
+                            SizedBox(
+                              height: 26,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Tooltip(
+                                      message: hasFailed ? _errorText(l10n) : dimensionsText,
+                                      child: Text(
+                                        hasFailed ? _errorText(l10n) : dimensionsText,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: metadataStyle?.copyWith(color: hasFailed ? AppColors.error : null),
+                                      ),
+                                    ),
+                                  ),
+                                  _buildStatusBadge(context),
+                                  const SizedBox(width: 6),
+                                  // 操作領域のダブルクリックはボタン内で受け、元画像を開く操作と分ける
+                                  GestureDetector(
+                                    onDoubleTap: () {},
+                                    child: Row(
+                                      children: [
+                                        IconButton(
+                                          onPressed: isCompleted ? onOpenFile : null,
+                                          tooltip: l10n.openFile,
+                                          icon: const Icon(Icons.open_in_new, size: 16),
+                                          constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                        IconButton(
+                                          onPressed: onOpenFolder,
+                                          tooltip: l10n.openFolder,
+                                          icon: const Icon(Icons.folder_open, size: 17),
+                                          constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                        IconButton(
+                                          onPressed: canRemove ? onRemove : null,
+                                          tooltip: l10n.removeItem,
+                                          icon: const Icon(Icons.close, size: 17),
+                                          constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            // 完了済みの進捗は保持し、失敗時は到達位置を赤で示す
-            LinearProgressIndicator(
-              value: isCompleted ? 1 : queuedImage.progress,
-              minHeight: 3,
-              color: hasFailed ? AppColors.error : AppColors.success,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              trackGap: 0,
-              stopIndicatorRadius: 0,
-            ),
-          ],
+              // 完了済みの進捗は保持し、失敗時は到達位置を赤で示す
+              LinearProgressIndicator(
+                value: isCompleted ? 1 : queuedImage.progress,
+                minHeight: 3,
+                color: hasFailed ? AppColors.error : AppColors.success,
+                backgroundColor: colorScheme.surfaceContainerHighest,
+                trackGap: 0,
+                stopIndicatorRadius: 0,
+              ),
+            ],
+          ),
         ),
       ),
     );

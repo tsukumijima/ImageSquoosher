@@ -16,6 +16,7 @@ import 'package:image_squoosher/ui/home_screen.dart';
 import 'package:image_squoosher/ui/theme.dart';
 import 'package:image_squoosher/ui/widgets/compression_footer.dart';
 import 'package:image_squoosher/ui/widgets/conversion_settings_panel.dart';
+import 'package:image_squoosher/ui/widgets/empty_drop_area.dart';
 import 'package:image_squoosher/ui/widgets/queued_image_row.dart';
 import 'package:image_squoosher/ui/widgets/queue_header.dart';
 
@@ -142,6 +143,7 @@ Future<void> _pumpHomeScreen(
   required Size size,
   required Locale locale,
   required List<QueuedImage> images,
+  VisualDensity? visualDensity,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -156,7 +158,7 @@ Future<void> _pumpHomeScreen(
   await tester.pumpWidget(
     MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(const Color(0xff0a84ff)),
+      theme: buildAppTheme(const Color(0xff0a84ff)).copyWith(visualDensity: visualDensity),
       locale: locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -221,6 +223,63 @@ void main() {
   });
 
   group('HomeScreen layout', () {
+    // 言語と解除ボタンの有効状態が変わっても、背景の高さと一覧右端の位置を保つ
+    for (final locale in const [Locale('ja'), Locale('en')]) {
+      for (final hasImages in [false, true]) {
+        testWidgets('${locale.languageCode} main buttons keep aligned 37px heights with images=$hasImages', (
+          tester,
+        ) async {
+          await _pumpHomeScreen(
+            tester,
+            size: const Size(620, 680),
+            locale: locale,
+            images: hasImages ? _normalImages() : [],
+            visualDensity: VisualDensity.compact,
+          );
+          final l10n = AppLocalizations.of(tester.element(find.byType(QueueHeader)));
+          final addButton = find.ancestor(
+            of: find.text(l10n.addFiles),
+            matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+          );
+          final clearButton = find.ancestor(
+            of: find.text(l10n.clearSelection),
+            matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+          );
+          final startButton = find.descendant(
+            of: find.byType(CompressionFooter),
+            matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+          );
+
+          // 操作領域だけが広く背景が縮む不具合を捕捉するため、描画を担う Material を測る
+          final addMaterial = find.descendant(of: addButton, matching: find.byType(Material));
+          final clearMaterial = find.descendant(of: clearButton, matching: find.byType(Material));
+          final addBounds = tester.getRect(addMaterial);
+          final clearBounds = tester.getRect(clearMaterial);
+          expect(addBounds.height, 37);
+          expect(clearBounds.height, addBounds.height);
+          expect(
+            tester.getSize(find.descendant(of: startButton, matching: find.byType(Material))).height,
+            addBounds.height,
+          );
+          expect(
+            tester.widget<Material>(addMaterial).color,
+            Theme.of(tester.element(addButton)).colorScheme.primary,
+          );
+          expect(tester.widget<FilledButton>(clearButton).onPressed != null, hasImages);
+
+          // 一覧の枠と見出しの余白を実座標で比べ、右端と上下の間隔を固定する
+          final queueBounds = tester.getRect(find.byType(QueueHeader));
+          final content = hasImages
+              ? find.byType(QueuedImageRow).first
+              : find.descendant(of: find.byType(EmptyDropArea), matching: find.byType(InkWell));
+          expect(clearBounds.right, tester.getRect(content).right);
+          expect(clearBounds.top - queueBounds.top, 8);
+          expect(queueBounds.bottom - clearBounds.bottom, 8);
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+
     for (final locale in const [Locale('ja'), Locale('en')]) {
       for (final size in const [Size(620, 680), Size(520, 560)]) {
         for (final state in ['empty', 'normal', 'failed', 'completed']) {
@@ -261,9 +320,9 @@ void main() {
               );
               final startButton = find.ancestor(
                 of: find.text(l10n.start),
-                matching: find.byWidgetPredicate((widget) => widget is CupertinoButton),
+                matching: find.byWidgetPredicate((widget) => widget is FilledButton),
               );
-              expect(tester.widget<CupertinoButton>(startButton).onPressed, isNull);
+              expect(tester.widget<FilledButton>(startButton).onPressed, isNull);
               expect(find.text(l10n.compressionComplete), findsOneWidget);
               expect(find.textContaining(l10n.compressionReduction('69'), findRichText: true), findsOneWidget);
               expect(
@@ -332,7 +391,7 @@ void main() {
       }
     });
 
-    testWidgets('conversion start uses white text and icons while image addition uses a neutral color', (tester) async {
+    testWidgets('conversion start uses white text and icons', (tester) async {
       await _pumpHomeScreen(
         tester,
         size: const Size(620, 680),
@@ -342,16 +401,11 @@ void main() {
 
       final buttons = find.ancestor(
         of: find.text('変換開始'),
-        matching: find.byType(CupertinoButton),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
       );
       expect(buttons, findsOneWidget);
-      final addButton = tester.widget<FilledButton>(
-        find.ancestor(of: find.text('画像を追加'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)),
-      );
-      final colorScheme = Theme.of(tester.element(find.byWidget(addButton))).colorScheme;
-      expect(addButton.style!.backgroundColor!.resolve({}), colorScheme.surfaceContainerHighest);
       for (final element in buttons.evaluate()) {
-        final button = element.widget as CupertinoButton;
+        final button = element.widget as FilledButton;
         if (button.onPressed != null) {
           final label = find.descendant(of: find.byWidget(button), matching: find.byType(Text)).first;
           expect(DefaultTextStyle.of(tester.element(label)).style.color, Colors.white);
@@ -455,7 +509,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('overwrite disables the adjacent suffix field while preserving its value and bounds', (tester) async {
+  testWidgets('overwrite disables the suffix field while preserving its value and bounds', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAppTheme(const Color(0xff0a84ff)),
@@ -471,7 +525,7 @@ void main() {
     final suffixBounds = tester.getRect(suffixField);
     final overwriteRow = find.ancestor(of: find.text('Overwrite original files'), matching: find.byType(InkWell)).first;
     final overwriteBounds = tester.getRect(overwriteRow);
-    expect(suffixBounds.top - overwriteBounds.bottom, closeTo(6, 0.01));
+    expect(suffixBounds.bottom, lessThan(overwriteBounds.top));
     expect(overwriteBounds.height, 26);
     final upscalingBounds = tester.getRect(
       find.ancestor(of: find.text('Allow upscaling'), matching: find.byType(InkWell)).first,
@@ -637,6 +691,7 @@ void main() {
                 aspectRatio: image_settings.AspectRatio.preset(image_settings.AspectRatioPreset.ratio16x9),
               ),
               canRemove: true,
+              onOpenSourceFile: () {},
               onOpenFile: () {},
               onOpenFolder: () {},
               onRemove: () {},
@@ -675,6 +730,7 @@ void main() {
               aspectRatio: image_settings.AspectRatio.preset(image_settings.AspectRatioPreset.square),
             ),
             canRemove: true,
+            onOpenSourceFile: () {},
             onOpenFile: () {},
             onOpenFolder: () {},
             onRemove: () {},

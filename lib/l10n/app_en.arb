@@ -36,7 +36,7 @@
   "overwriteDescription": "Replace original images with compressed files",
   "statusReady": "Ready",
   "compressionUnavailable": "Compression will start after an image engine is connected",
-  "clearConfirmation": "All images removed from the list. No files were deleted by this action.",
+  "clearConfirmation": "All images removed from the list.\nNo files were deleted by this action.",
   "replaceFiles": "Replace list",
   "dropImages": "Drop images here",
   "dropImagesDescription": "You can also choose images with the button above.",
@@ -56,7 +56,7 @@
   "compressionStopped": "Compression stopped.",
   "compressionFailed": "Some images could not be compressed.",
   "outputSaved": "Saved",
-  "filesAdded": "Images added. Check your settings when you are ready to convert.",
+  "filesAdded": "Images added.\nCheck your settings when you are ready to convert.",
   "duplicateFilesSkipped": "Duplicate images were skipped.",
   "noSupportedImages": "Choose JPEG, PNG, or WebP images.",
   "selectImagesFailed": "Could not select image files.",
@@ -76,7 +76,7 @@
       "total": {}
     }
   },
-  "statusCompleted": "Converted {completed} images. Please check the list for {failed} images that could not be converted.",
+  "statusCompleted": "Converted {completed} images.\nPlease check the list for {failed} images that could not be converted.",
   "@statusCompleted": {
     "placeholders": {
       "completed": {},
@@ -119,7 +119,7 @@
   "animatedImage": "Animated images are not supported",
   "unsupportedImage": "Only still JPEG, PNG, and WebP images can be converted",
   "conversionError": "The image could not be converted",
-  "conversionSucceeded": "Converted {count} images. You can open the files or their folders from the list.",
+  "conversionSucceeded": "Converted {count} images.\nYou can open the files or their folders from the list.",
   "@conversionSucceeded": {
     "placeholders": {
       "count": {
@@ -144,8 +144,9 @@
     }
   },
   "licenses": "View licenses",
-  "openFileFailed": "Could not open the file. Please check that it exists in the output folder.",
-  "openFolderFailed": "Could not open the folder. Please check that it still exists.",
+  "openFileFailed": "Could not open the file.\nPlease check that it exists in the output folder.",
+  "openSourceFileFailed": "Could not open the source file.\nPlease check that it has not been moved or deleted.",
+  "openFolderFailed": "Could not open the folder.\nPlease check that it still exists.",
   "defaultsRestored": "Conversion settings restored to their defaults.",
   "conversionFailedStatus": "Conversion failed",
   "stopping": "Stopping"

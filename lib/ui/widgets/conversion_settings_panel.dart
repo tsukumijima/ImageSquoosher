@@ -424,7 +424,7 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 6),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -444,9 +444,10 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    // Material のスライダーでマウスとキーボードの両方を扱う
+                    // トラックの既定余白を外し、下の入力欄と描画の左端をそろえる
                     child: Slider(
                       key: const ValueKey('quality-slider-focus'),
+                      padding: EdgeInsets.zero,
                       value: settings.quality.toDouble(),
                       min: 1,
                       max: 100,
@@ -474,26 +475,6 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 6),
-            _buildAspectRatioField(l10n),
-            const SizedBox(height: 6),
-            _buildResizeField(l10n),
-            _buildCheckbox(
-              label: l10n.allowUpscale,
-              value: settings.allowUpscale,
-              onChanged: settings.resizeEnabled ? (value) => _updateSettings(allowUpscale: value) : null,
-            ),
-            _buildCheckbox(
-              label: l10n.exifRemoval,
-              value: settings.stripMetadata,
-              onChanged: (value) => _updateSettings(stripMetadata: value),
-            ),
-            // 上書きの選択に続けて、出力名へ使うサフィックスを確認できるようにする
-            _buildCheckbox(
-              label: l10n.overwrite,
-              value: settings.overwrite,
-              onChanged: (value) => _updateSettings(overwrite: value),
             ),
             const SizedBox(height: 6),
             SizedBox(
@@ -539,6 +520,26 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: 6),
+            _buildAspectRatioField(l10n),
+            const SizedBox(height: 6),
+            _buildResizeField(l10n),
+            const SizedBox(height: 8),
+            _buildCheckbox(
+              label: l10n.allowUpscale,
+              value: settings.allowUpscale,
+              onChanged: settings.resizeEnabled ? (value) => _updateSettings(allowUpscale: value) : null,
+            ),
+            _buildCheckbox(
+              label: l10n.exifRemoval,
+              value: settings.stripMetadata,
+              onChanged: (value) => _updateSettings(stripMetadata: value),
+            ),
+            _buildCheckbox(
+              label: l10n.overwrite,
+              value: settings.overwrite,
+              onChanged: (value) => _updateSettings(overwrite: value),
             ),
           ],
         ),

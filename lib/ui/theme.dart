@@ -62,9 +62,18 @@ ThemeData buildAppTheme(Color accentColor) {
         backgroundColor: accentColor,
         foregroundColor: Colors.white,
         iconColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        // 主要操作の高さと押下時の波紋を、ヘッダーとフッターで共有する
+        minimumSize: const Size(0, 37),
+        visualDensity: VisualDensity.standard,
+        splashFactory: InkRipple.splashFactory,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        textStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamilyFallback: fontFamilyFallback),
+        textStyle: const TextStyle(
+          fontSize: 14,
+          height: 1.5,
+          fontWeight: FontWeight.w600,
+          fontFamilyFallback: fontFamilyFallback,
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(

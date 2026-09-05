@@ -19,7 +19,7 @@
   "upToDate": "最新バージョンをご利用いただいています。",
   "updateAvailable": "新しいバージョンが利用できます",
   "viewRelease": "リリースを見る",
-  "releaseOpenFailed": "ページを開けませんでした。時間をおいて、もう一度お試しください。",
+  "releaseOpenFailed": "ページを開けませんでした。\n時間をおいて、もう一度お試しください。",
   "dismiss": "閉じる",
   "close": "閉じる",
   "save": "保存",
@@ -36,7 +36,7 @@
   "overwriteDescription": "変換後の画像で元ファイルを置き換えます",
   "statusReady": "待機中",
   "compressionUnavailable": "画像変換エンジンの接続後に圧縮を開始できます",
-  "clearConfirmation": "画像をすべて一覧から外しました。この操作でファイルが削除されることはありません。",
+  "clearConfirmation": "画像をすべて一覧から外しました。\nこの操作でファイルが削除されることはありません。",
   "replaceFiles": "一覧を置き換え",
   "dropImages": "ここへ画像をドロップ",
   "dropImagesDescription": "上のボタンから画像を選ぶこともできます。",
@@ -53,21 +53,21 @@
   "reset": "リセット",
   "openOutput": "Finder で表示",
   "compressionComplete": "変換完了",
-  "compressionStopped": "変換を停止しました。完了した画像は保存されています。",
-  "compressionFailed": "画像を変換できませんでした。各画像のエラーをご確認ください。",
+  "compressionStopped": "変換を停止しました。\n完了した画像は保存されています。",
+  "compressionFailed": "画像を変換できませんでした。\n各画像のエラーをご確認ください。",
   "outputSaved": "保存先",
-  "filesAdded": "画像を追加しました。設定を確認したら、変換を始められます。",
+  "filesAdded": "画像を追加しました。\n設定を確認したら、変換を始められます。",
   "duplicateFilesSkipped": "選択した画像はすでに一覧に追加されています。",
   "noSupportedImages": "JPEG・PNG・WebP の画像を選んでください。",
-  "selectImagesFailed": "画像を選択できませんでした。もう一度お試しください。",
-  "dropFailed": "画像を追加できませんでした。もう一度お試しください。",
+  "selectImagesFailed": "画像を選択できませんでした。\nもう一度お試しください。",
+  "dropFailed": "画像を追加できませんでした。\nもう一度お試しください。",
   "settingsSaved": "設定を保存しました。",
   "aboutDescription": "JPEG の圧縮とリサイズを行うデスクトップアプリです。",
   "fileSize": "ファイルサイズ",
   "unknownSize": "不明",
   "outputNotCreated": "出力はまだ作成されていません",
   "overwriteRestoredOff": "元ファイルの上書きは起動時にオフへ戻ります",
-  "checkFailed": "更新を確認できませんでした。時間をおいて、もう一度お試しください。",
+  "checkFailed": "更新を確認できませんでした。\n時間をおいて、もう一度お試しください。",
   "statusWaiting": "待機中",
   "statusProgress": "{total}件中 {completed}件完了",
   "@statusProgress": {
@@ -76,7 +76,7 @@
       "total": {}
     }
   },
-  "statusCompleted": "{completed}件の画像を変換しました。{failed}件の画像でエラーが発生したため、一覧をご確認ください。",
+  "statusCompleted": "{completed}件の画像を変換しました。\n{failed}件の画像でエラーが発生したため、一覧をご確認ください。",
   "@statusCompleted": {
     "placeholders": {
       "completed": {},
@@ -119,7 +119,7 @@
   "animatedImage": "アニメーション画像には対応していません",
   "unsupportedImage": "JPEG・PNG・WebP の静止画だけを変換できます",
   "conversionError": "画像を変換できませんでした",
-  "conversionSucceeded": "{count}件の画像を変換できました。ファイルや保存先は一覧から開けます。",
+  "conversionSucceeded": "{count}件の画像を変換できました。\nファイルや保存先は一覧から開けます。",
   "@conversionSucceeded": {
     "placeholders": {
       "count": {
@@ -144,8 +144,9 @@
     }
   },
   "licenses": "ライセンスを表示",
-  "openFileFailed": "ファイルを開けませんでした。保存先にファイルがあるかご確認ください。",
-  "openFolderFailed": "保存先を開けませんでした。フォルダがあるかご確認ください。",
+  "openFileFailed": "ファイルを開けませんでした。\n保存先にファイルがあるかご確認ください。",
+  "openSourceFileFailed": "元のファイルを開けませんでした。\nファイルが移動・削除されていないかご確認ください。",
+  "openFolderFailed": "保存先を開けませんでした。\nフォルダがあるかご確認ください。",
   "defaultsRestored": "変換設定を既定値に戻しました。",
   "conversionFailedStatus": "変換失敗",
   "stopping": "停止中"

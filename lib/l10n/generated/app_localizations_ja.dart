@@ -66,7 +66,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get viewRelease => 'リリースを見る';
 
   @override
-  String get releaseOpenFailed => 'ページを開けませんでした。時間をおいて、もう一度お試しください。';
+  String get releaseOpenFailed => 'ページを開けませんでした。\n時間をおいて、もう一度お試しください。';
 
   @override
   String get dismiss => '閉じる';
@@ -117,7 +117,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get compressionUnavailable => '画像変換エンジンの接続後に圧縮を開始できます';
 
   @override
-  String get clearConfirmation => '画像をすべて一覧から外しました。この操作でファイルが削除されることはありません。';
+  String get clearConfirmation => '画像をすべて一覧から外しました。\nこの操作でファイルが削除されることはありません。';
 
   @override
   String get replaceFiles => '一覧を置き換え';
@@ -168,16 +168,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get compressionComplete => '変換完了';
 
   @override
-  String get compressionStopped => '変換を停止しました。完了した画像は保存されています。';
+  String get compressionStopped => '変換を停止しました。\n完了した画像は保存されています。';
 
   @override
-  String get compressionFailed => '画像を変換できませんでした。各画像のエラーをご確認ください。';
+  String get compressionFailed => '画像を変換できませんでした。\n各画像のエラーをご確認ください。';
 
   @override
   String get outputSaved => '保存先';
 
   @override
-  String get filesAdded => '画像を追加しました。設定を確認したら、変換を始められます。';
+  String get filesAdded => '画像を追加しました。\n設定を確認したら、変換を始められます。';
 
   @override
   String get duplicateFilesSkipped => '選択した画像はすでに一覧に追加されています。';
@@ -186,10 +186,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get noSupportedImages => 'JPEG・PNG・WebP の画像を選んでください。';
 
   @override
-  String get selectImagesFailed => '画像を選択できませんでした。もう一度お試しください。';
+  String get selectImagesFailed => '画像を選択できませんでした。\nもう一度お試しください。';
 
   @override
-  String get dropFailed => '画像を追加できませんでした。もう一度お試しください。';
+  String get dropFailed => '画像を追加できませんでした。\nもう一度お試しください。';
 
   @override
   String get settingsSaved => '設定を保存しました。';
@@ -210,7 +210,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get overwriteRestoredOff => '元ファイルの上書きは起動時にオフへ戻ります';
 
   @override
-  String get checkFailed => '更新を確認できませんでした。時間をおいて、もう一度お試しください。';
+  String get checkFailed => '更新を確認できませんでした。\n時間をおいて、もう一度お試しください。';
 
   @override
   String get statusWaiting => '待機中';
@@ -222,7 +222,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String statusCompleted(Object completed, Object failed) {
-    return '$completed件の画像を変換しました。$failed件の画像でエラーが発生したため、一覧をご確認ください。';
+    return '$completed件の画像を変換しました。\n$failed件の画像でエラーが発生したため、一覧をご確認ください。';
   }
 
   @override
@@ -306,7 +306,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String conversionSucceeded(int count) {
-    return '$count件の画像を変換できました。ファイルや保存先は一覧から開けます。';
+    return '$count件の画像を変換できました。\nファイルや保存先は一覧から開けます。';
   }
 
   @override
@@ -323,10 +323,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get licenses => 'ライセンスを表示';
 
   @override
-  String get openFileFailed => 'ファイルを開けませんでした。保存先にファイルがあるかご確認ください。';
+  String get openFileFailed => 'ファイルを開けませんでした。\n保存先にファイルがあるかご確認ください。';
 
   @override
-  String get openFolderFailed => '保存先を開けませんでした。フォルダがあるかご確認ください。';
+  String get openSourceFileFailed => '元のファイルを開けませんでした。\nファイルが移動・削除されていないかご確認ください。';
+
+  @override
+  String get openFolderFailed => '保存先を開けませんでした。\nフォルダがあるかご確認ください。';
 
   @override
   String get defaultsRestored => '変換設定を既定値に戻しました。';
