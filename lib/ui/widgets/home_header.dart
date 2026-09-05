@@ -39,7 +39,6 @@ class HomeHeader extends StatelessWidget {
     minimumSize: WidgetStatePropertyAll(Size(0, 32)),
     padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12)),
     visualDensity: VisualDensity.standard,
-    textStyle: WidgetStatePropertyAll(TextStyle(fontSize: 13)),
   );
 
   /// ヘッダーを構築する。
@@ -48,6 +47,10 @@ class HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // ポップアップでも本文と同じフォントを使い、メニュー用の文字サイズだけ調整する
+    final menuItemStyle = _menuItemStyle.copyWith(
+      textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.bodyMedium!.copyWith(fontSize: 13)),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 12, 8),
       child: Row(
@@ -98,17 +101,17 @@ class HomeHeader extends StatelessWidget {
               ),
               menuChildren: [
                 MenuItemButton(
-                  style: _menuItemStyle,
+                  style: menuItemStyle,
                   leadingIcon: const Icon(Icons.restore, size: 18),
                   onPressed: isCompressing ? null : () => onMenuAction(HomeMenuAction.restoreDefaults),
                   child: Text(l10n.restoreDefaults),
                 ),
                 SubmenuButton(
-                  style: _menuItemStyle,
+                  style: menuItemStyle,
                   leadingIcon: const Icon(Icons.language, size: 18),
                   menuChildren: [
                     MenuItemButton(
-                      style: _menuItemStyle,
+                      style: menuItemStyle,
                       leadingIcon: const Icon(Icons.translate, size: 18),
                       trailingIcon: Localizations.localeOf(context).languageCode == 'ja'
                           ? const Icon(Icons.check, size: 18)
@@ -117,7 +120,7 @@ class HomeHeader extends StatelessWidget {
                       child: Text(l10n.japanese),
                     ),
                     MenuItemButton(
-                      style: _menuItemStyle,
+                      style: menuItemStyle,
                       leadingIcon: const Icon(Icons.translate, size: 18),
                       trailingIcon: Localizations.localeOf(context).languageCode == 'en'
                           ? const Icon(Icons.check, size: 18)
@@ -130,13 +133,13 @@ class HomeHeader extends StatelessWidget {
                 ),
                 const Divider(height: 9),
                 MenuItemButton(
-                  style: _menuItemStyle,
+                  style: menuItemStyle,
                   leadingIcon: const Icon(Icons.system_update_alt, size: 18),
                   onPressed: () => onMenuAction(HomeMenuAction.checkForUpdates),
                   child: Text(l10n.checkForUpdates),
                 ),
                 MenuItemButton(
-                  style: _menuItemStyle,
+                  style: menuItemStyle,
                   leadingIcon: const Icon(Icons.info_outline, size: 18),
                   onPressed: () => onMenuAction(HomeMenuAction.about),
                   child: Text(l10n.about),

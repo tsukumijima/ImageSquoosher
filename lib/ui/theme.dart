@@ -11,11 +11,11 @@ abstract final class AppColors {
   static const info = Color(0xff2196f3);
 }
 
-/// OS のアクセント色と α Import Utility のタイポグラフィを使うテーマを作成する。
+/// OS のアクセント色と同梱 Noto Sans JP を使うテーマを作成する。
 /// @param accentColor OS が提供するアクセント色
 /// @returns アプリ全体で使うダークテーマ
 ThemeData buildAppTheme(Color accentColor) {
-  const fontFamilyFallback = <String>['Hiragino Sans', 'Noto Sans JP', 'Noto Sans CJK JP'];
+  const fontFamily = 'Noto Sans JP';
   final colorScheme = ColorScheme.fromSeed(
     seedColor: accentColor,
     brightness: Brightness.dark,
@@ -28,15 +28,15 @@ ThemeData buildAppTheme(Color accentColor) {
     brightness: Brightness.dark,
     visualDensity: VisualDensity.compact,
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    fontFamilyFallback: fontFamilyFallback,
+    fontFamily: fontFamily,
     colorScheme: colorScheme,
     cupertinoOverrideTheme: CupertinoThemeData(
       brightness: Brightness.dark,
       primaryColor: accentColor,
       primaryContrastingColor: Colors.white,
       textTheme: const CupertinoTextThemeData(
-        textStyle: TextStyle(fontSize: 14, color: Colors.white, fontFamilyFallback: fontFamilyFallback),
-        actionTextStyle: TextStyle(fontSize: 14, color: Colors.white, fontFamilyFallback: fontFamilyFallback),
+        textStyle: TextStyle(fontSize: 14, color: Colors.white, fontFamily: fontFamily),
+        actionTextStyle: TextStyle(fontSize: 14, color: Colors.white, fontFamily: fontFamily),
       ),
     ),
     scaffoldBackgroundColor: colorScheme.surface,
@@ -50,7 +50,7 @@ ThemeData buildAppTheme(Color accentColor) {
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: Colors.white,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
     ),
     cardTheme: CardThemeData(
@@ -72,9 +72,10 @@ ThemeData buildAppTheme(Color accentColor) {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         textStyle: const TextStyle(
           fontSize: 14,
-          height: 1.5,
+          // Noto Sans JP の字面をアイコンの中央へそろえ、ボタンの外寸は最小高さで維持する
+          height: 1.25,
           fontWeight: FontWeight.w600,
-          fontFamilyFallback: fontFamilyFallback,
+          fontFamily: fontFamily,
         ),
       ),
     ),
@@ -104,12 +105,12 @@ ThemeData buildAppTheme(Color accentColor) {
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: Colors.white,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: colorScheme.surfaceContainerHighest,
-      contentTextStyle: const TextStyle(color: Colors.white, fontFamilyFallback: fontFamilyFallback),
+      contentTextStyle: const TextStyle(color: Colors.white, fontFamily: fontFamily),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       behavior: SnackBarBehavior.floating,
     ),
@@ -134,8 +135,8 @@ ThemeData buildAppTheme(Color accentColor) {
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: accentColor, width: 2),
       ),
-      labelStyle: const TextStyle(color: Colors.white70, fontFamilyFallback: fontFamilyFallback),
-      hintStyle: const TextStyle(color: Colors.white38, fontFamilyFallback: fontFamilyFallback),
+      labelStyle: const TextStyle(color: Colors.white70, fontFamily: fontFamily),
+      hintStyle: const TextStyle(color: Colors.white38, fontFamily: fontFamily),
     ),
     dropdownMenuTheme: DropdownMenuThemeData(
       inputDecorationTheme: InputDecorationTheme(
@@ -165,87 +166,87 @@ ThemeData buildAppTheme(Color accentColor) {
         fontWeight: FontWeight.bold,
         color: Colors.white,
         height: 1.3,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       displayMedium: TextStyle(
         fontSize: 45,
         fontWeight: FontWeight.bold,
         color: Colors.white,
         height: 1.3,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       displaySmall: TextStyle(
         fontSize: 36,
         fontWeight: FontWeight.bold,
         color: Colors.white,
         height: 1.3,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       headlineLarge: TextStyle(
         fontSize: 32,
         fontWeight: FontWeight.w600,
         color: Colors.white,
         height: 1.4,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       headlineMedium: TextStyle(
         fontSize: 28,
         fontWeight: FontWeight.w600,
         color: Colors.white,
         height: 1.4,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       headlineSmall: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: Colors.white,
         height: 1.4,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       titleLarge: TextStyle(
         fontSize: 22,
         fontWeight: FontWeight.w500,
         color: Colors.white,
         height: 1.4,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       titleMedium: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: Colors.white,
         height: 1.5,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       titleSmall: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: Colors.white,
         height: 1.5,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
-      bodyLarge: TextStyle(fontSize: 16, color: Colors.white, height: 1.6, fontFamilyFallback: fontFamilyFallback),
-      bodyMedium: TextStyle(fontSize: 14, color: Colors.white, height: 1.6, fontFamilyFallback: fontFamilyFallback),
-      bodySmall: TextStyle(fontSize: 12, color: Colors.white70, height: 1.6, fontFamilyFallback: fontFamilyFallback),
+      bodyLarge: TextStyle(fontSize: 16, color: Colors.white, height: 1.6, fontFamily: fontFamily),
+      bodyMedium: TextStyle(fontSize: 14, color: Colors.white, height: 1.6, fontFamily: fontFamily),
+      bodySmall: TextStyle(fontSize: 12, color: Colors.white70, height: 1.6, fontFamily: fontFamily),
       labelLarge: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: Colors.white,
         height: 1.5,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       labelMedium: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: Colors.white,
         height: 1.5,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
       labelSmall: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w500,
         color: Colors.white70,
         height: 1.5,
-        fontFamilyFallback: fontFamilyFallback,
+        fontFamily: fontFamily,
       ),
     ),
   );

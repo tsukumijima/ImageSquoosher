@@ -243,13 +243,14 @@ List<QueuedImage> _failedImages() {
 }
 
 void main() {
-  test('Cupertino controls inherit the system accent and Japanese font fallback', () {
+  test('Cupertino controls inherit the system accent and bundled Noto Sans JP', () {
     const accentColor = Color(0xff0a84ff);
     final theme = buildAppTheme(accentColor).cupertinoOverrideTheme!;
     expect(theme.primaryColor, accentColor);
     expect(theme.primaryContrastingColor, Colors.white);
     expect(theme.textTheme!.textStyle.fontSize, 14);
-    expect(theme.textTheme!.textStyle.fontFamilyFallback, ['Hiragino Sans', 'Noto Sans JP', 'Noto Sans CJK JP']);
+    expect(theme.textTheme!.textStyle.fontFamily, 'Noto Sans JP');
+    expect(theme.textTheme!.actionTextStyle.fontFamily, 'Noto Sans JP');
   });
 
   group('HomeScreen layout', () {
