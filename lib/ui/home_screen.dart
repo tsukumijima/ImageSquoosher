@@ -64,6 +64,7 @@ class HomeScreenState extends State<HomeScreen> {
   UpdateCheckResult? _updateResult;
   bool _showUpdateBanner = true;
   bool _didReceiveFinderSelection = false;
+  List<String>? _pendingFinderSelection;
   bool _isDropActive = false;
   bool _isFinderSyncEnabled = false;
   String _applicationVersion = '';
@@ -127,6 +128,12 @@ class HomeScreenState extends State<HomeScreen> {
         return;
       }
       _didReceiveFinderSelection = true;
+      // 実行中のキューを保ち、変換が終了した時点で最後に選んだ画像を取り込む
+      if (_controller.isCompressing) {
+        _pendingFinderSelection = paths;
+        return;
+      }
+      _pendingFinderSelection = null;
       _replaceFiles(paths);
     });
   }
@@ -190,6 +197,17 @@ class HomeScreenState extends State<HomeScreen> {
   /// コントローラーの変更を画面へ反映します。
   void _refresh() {
     if (mounted) {
+      // 完了メッセージが元の変換件数を読み取った後、次の描画で保留中の選択を取り込む
+      if (_controller.isCompressing == false && _pendingFinderSelection != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final paths = _pendingFinderSelection;
+          if (mounted && _controller.isCompressing == false && paths != null) {
+            // 置換もコントローラーの通知を発生させるため、保留値を先に消費する
+            _pendingFinderSelection = null;
+            _replaceFiles(paths);
+          }
+        });
+      }
       setState(() {});
     }
   }

@@ -82,6 +82,8 @@ The macOS app includes a Finder Sync extension.
 
 ImageSquoosher opens with the supported selected files in its conversion queue. The extension adds an item only to the contextual menu for supported image selections.
 
+If a conversion is running, a new Finder selection replaces the queue after the current batch finishes or stops. If several selections arrive during the batch, the latest selection is used. Choose **Start compression** to convert the new queue.
+
 ## Privacy and processing
 
 Image conversion runs locally on your computer. ImageSquoosher invokes the bundled MozJPEG `cjpeg` executable and does not upload source images for conversion.
