@@ -286,6 +286,8 @@ class HomeScreenState extends State<HomeScreen> {
 
   /// 変換を開始し、完了・失敗・停止の要約を画面下部へ表示します。
   Future<void> _startCompression() async {
+    // キーボードから開始した場合も数値欄の編集を終え、実効設定を表示する
+    FocusManager.instance.primaryFocus?.unfocus();
     final l10n = AppLocalizations.of(context);
     try {
       await _flushPreferences();

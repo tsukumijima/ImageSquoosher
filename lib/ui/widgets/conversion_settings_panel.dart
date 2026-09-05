@@ -41,6 +41,33 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     _ratioHeightController = TextEditingController(text: widget.settings.aspectRatio.vertical.toString());
     _resizeController = TextEditingController(text: widget.settings.resizeValue.toString());
     _suffixController = TextEditingController(text: widget.settings.suffix);
+    // 編集を終えた数値欄は、変換で使う最後の有効値へ表示を戻す
+    _ratioWidthFocusNode.addListener(_synchronizeNumericFields);
+    _ratioHeightFocusNode.addListener(_synchronizeNumericFields);
+    _resizeFocusNode.addListener(_synchronizeNumericFields);
+  }
+
+  /// フォーカスを外した数値欄へ実効設定を反映します。
+  void _synchronizeNumericFields() {
+    final settings = widget.settings;
+    _synchronizeController(
+      _ratioWidthController,
+      _ratioWidthFocusNode,
+      settings.aspectRatio.horizontal.toString(),
+      settings.aspectRatio.horizontal.toString(),
+    );
+    _synchronizeController(
+      _ratioHeightController,
+      _ratioHeightFocusNode,
+      settings.aspectRatio.vertical.toString(),
+      settings.aspectRatio.vertical.toString(),
+    );
+    _synchronizeController(
+      _resizeController,
+      _resizeFocusNode,
+      settings.resizeValue.toString(),
+      settings.resizeValue.toString(),
+    );
   }
 
   @override

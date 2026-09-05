@@ -365,6 +365,59 @@ void main() {
     expect(tester.widget<TextField>(resizeValueField).controller!.text, '1920');
   });
 
+  testWidgets('numeric settings fields restore saved values when focus leaves invalid input', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(const Color(0xff0a84ff)),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(body: _SettingsPanelHost()),
+      ),
+    );
+    final hostState = tester.state<_SettingsPanelHostState>(find.byType(_SettingsPanelHost));
+    hostState.useCustomAspectRatio();
+    await tester.pump();
+    await tester.tap(find.text('Resize'));
+    await tester.pump();
+
+    // 有効値の更新後に無効な入力を残し、フォーカス移動だけで実効設定へ戻ることを確認する
+    for (final fieldKey in ['ratio-width-field', 'ratio-height-field', 'resize-value-field']) {
+      final field = find.byKey(ValueKey(fieldKey));
+      await tester.enterText(field, '7');
+      await tester.pump();
+      for (final invalidInput in ['0', '', 'invalid']) {
+        await tester.enterText(field, invalidInput);
+        await tester.pump();
+        expect(tester.widget<TextField>(field).controller!.text, invalidInput);
+        expect(hostState._settings.resizeValue, fieldKey == 'resize-value-field' ? 7 : 1920);
+        await tester.tap(find.byKey(const ValueKey('suffix-field')));
+        await tester.pump();
+        expect(tester.widget<TextField>(field).controller!.text, fieldKey == 'resize-value-field' ? '7' : '7.0');
+      }
+    }
+    expect(hostState._settings.aspectRatio.horizontal, 7);
+    expect(hostState._settings.aspectRatio.vertical, 7);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Enter restores invalid resize input before compression', (tester) async {
+    await _pumpHomeScreen(tester, size: const Size(520, 560), locale: const Locale('en'), images: []);
+    await tester.tap(find.text('Resize'));
+    await tester.pump();
+    final resizeField = find.byKey(const ValueKey('resize-value-field'));
+    await tester.enterText(resizeField, '0');
+    await tester.pump();
+    expect(tester.widget<TextField>(resizeField).controller!.text, '0');
+
+    // 入力欄にフォーカスを置いたまま、画面の開始ショートカットを実行する
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(tester.widget<TextField>(resizeField).controller!.text, '1920');
+    expect(tester.widget<TextField>(resizeField).focusNode!.hasFocus, isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('thumbnail decoding constrains only the cover axis at physical pixel size', (tester) async {
     tester.view.devicePixelRatio = 2;
     tester.view.physicalSize = const Size(1240, 1360);
