@@ -44,6 +44,12 @@ Animated PNG and WebP files are rejected. ImageSquoosher does not silently switc
 
 The crop is always centered. You can keep the source aspect ratio, choose a preset ratio, or enter a custom horizontal-to-vertical ratio. Resizing uses the selected width or height while preserving the cropped aspect ratio.
 
+In a small window, scroll through the settings and conversion preview. The image-add and compression buttons stay visible while scrolling.
+
+Click the ratio or resize-axis field to open its options. While the list is open, use the arrow keys and Enter to select an option, or Esc to close the list.
+
+Completed images stay in the list without being compressed again with the same settings. Adding images processes only the new items; changing conversion settings makes images whose source files remain ready to run again. PNG and WebP rows retain their completed results when overwriting has removed the source files.
+
 ## Output filenames
 
 The default suffix is `_resized`, so `photo.png` becomes `photo_resized.jpg`. If that output already exists, ImageSquoosher uses Finder-style sequence numbers such as `photo_resized (1).jpg` and `photo_resized (2).jpg`.
@@ -53,6 +59,8 @@ An input that already ends in a sequence number keeps the sequence after the suf
 ## Replacing original images
 
 **Overwrite original files** is an explicit destructive option and is reset to off every time the app starts.
+
+While overwrite is enabled, the suffix field directly below it is disabled. Its value is preserved and becomes available again when overwrite is turned off.
 
 For JPEG input, ImageSquoosher writes the conversion to a separate temporary path, verifies that MozJPEG succeeded and that the result is a valid JPEG with the requested dimensions, then atomically replaces the source file. A failure leaves the source file in place.
 

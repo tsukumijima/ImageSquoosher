@@ -45,7 +45,7 @@ class QueuedImageRow extends StatelessWidget {
     return switch (queuedImage.status) {
       QueuedImageStatus.queued => colorScheme.onSurfaceVariant,
       QueuedImageStatus.processing => colorScheme.primary,
-      QueuedImageStatus.completed => colorScheme.tertiary,
+      QueuedImageStatus.completed => colorScheme.primary,
       QueuedImageStatus.failed => colorScheme.error,
       QueuedImageStatus.stopped => colorScheme.secondary,
     };
@@ -97,21 +97,26 @@ class QueuedImageRow extends StatelessWidget {
     return '${(byteLength / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  /// 完成した画像では入力サイズから減った割合を表示します。
-  String _reductionText() {
+  /// ファイルサイズの増減を符号付きの変化率で表示します。
+  String _sizeChangeText() {
     final inputSize = queuedImage.byteLength;
     final outputSize = queuedImage.outputByteLength;
     if (inputSize == null || outputSize == null || inputSize == 0) {
       return '—';
     }
-    return '${((1 - outputSize / inputSize) * 100).toStringAsFixed(1)}%';
+    final change = (outputSize / inputSize - 1) * 100;
+    return '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}%';
   }
 
-  /// 切り抜き比率を反映した小さなプレビューを作ります。
+  /// 待機中は切り抜き予定を、完了後は保存済みの出力をプレビューします。
   Widget _buildPreview(BuildContext context) {
-    final sourceDimensions = queuedImage.sourceDimensions ?? const ImageDimensions(1, 1);
+    final hasCompletedOutput = queuedImage.status == QueuedImageStatus.completed && queuedImage.outputPath != null;
+    // 上書きで元入力が削除された後も、出力ファイルとその寸法から結果を表示する
+    final sourceDimensions =
+        (hasCompletedOutput ? queuedImage.outputDimensions : queuedImage.sourceDimensions) ??
+        const ImageDimensions(1, 1);
     final sourceRatio = sourceDimensions.width / sourceDimensions.height;
-    final requestedRatio = settings.aspectRatio.resolve(sourceDimensions);
+    final requestedRatio = hasCompletedOutput ? sourceRatio : settings.aspectRatio.resolve(sourceDimensions);
     final previewRatio = requestedRatio.clamp(0.55, 1.8).toDouble();
     final cacheSize = (48 * MediaQuery.devicePixelRatioOf(context)).round();
     final previewWidth = previewRatio >= 1 ? cacheSize : (cacheSize * previewRatio).ceil();
@@ -128,7 +133,7 @@ class QueuedImageRow extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: Image.file(
-              File(queuedImage.path),
+              File(hasCompletedOutput ? queuedImage.outputPath! : queuedImage.path),
               fit: BoxFit.cover,
               cacheWidth: cacheWidth,
               cacheHeight: cacheHeight,
@@ -154,77 +159,103 @@ class QueuedImageRow extends StatelessWidget {
       elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildPreview(context),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    queuedImage.fileName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    '${l10n.sourceSize}: ${_dimensionText(queuedImage.sourceDimensions, l10n)} · ${_formatBytes(queuedImage.byteLength, l10n)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: metadataStyle,
-                  ),
-                  Text(
-                    '${l10n.outputSize}: ${_dimensionText(queuedImage.outputDimensions, l10n)} · ${_outputFileName(l10n)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: metadataStyle,
-                  ),
-                  if (queuedImage.status == QueuedImageStatus.completed)
-                    Wrap(
-                      spacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildPreview(context),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        queuedImage.fileName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        '${l10n.sourceSize}: ${_dimensionText(queuedImage.sourceDimensions, l10n)} · ${_formatBytes(queuedImage.byteLength, l10n)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: metadataStyle,
+                      ),
+                      Text(
+                        '${l10n.outputSize}: ${_dimensionText(queuedImage.outputDimensions, l10n)} · ${_outputFileName(l10n)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: metadataStyle,
+                      ),
+                      if (queuedImage.errorMessage != null)
                         Text(
-                          '${_formatBytes(queuedImage.byteLength, l10n)} → ${_formatBytes(queuedImage.outputByteLength, l10n)} (${_reductionText()})',
-                          style: metadataStyle,
+                          _errorText(l10n),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: metadataStyle?.copyWith(color: colorScheme.error),
                         ),
-                        TextButton(onPressed: onOpenFile, child: Text(l10n.openFile)),
-                        TextButton(onPressed: onOpenFolder, child: Text(l10n.openFolder)),
-                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                SizedBox(
+                  height: 32,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        _statusText(l10n),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: statusColor),
+                      ),
                     ),
-                  if (queuedImage.errorMessage != null)
-                    Text(
-                      _errorText(l10n),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: metadataStyle?.copyWith(color: colorScheme.error),
+                  ),
+                ),
+                if (canRemove)
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: IconButton(
+                      onPressed: onRemove,
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.close, size: 18),
+                      tooltip: l10n.removeItem,
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(99),
-              ),
-              child: Text(
-                _statusText(l10n),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: statusColor),
-              ),
-            ),
-            if (canRemove)
-              SizedBox(
-                width: 32,
-                height: 32,
-                child: IconButton(
-                  onPressed: onRemove,
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.close, size: 18),
-                  tooltip: l10n.removeItem,
+            // 完了操作をカード右端へそろえ、結果の数値はファイル情報と同じ位置から表示する
+            if (queuedImage.status == QueuedImageStatus.completed)
+              Padding(
+                padding: const EdgeInsets.only(left: 58),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${_formatBytes(queuedImage.byteLength, l10n)} → ${_formatBytes(queuedImage.outputByteLength, l10n)} (${_sizeChangeText()})',
+                        style: metadataStyle,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: onOpenFile,
+                      tooltip: l10n.openFile,
+                      icon: Icon(Icons.open_in_new, size: 18, color: colorScheme.primary),
+                      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+                      padding: EdgeInsets.zero,
+                    ),
+                    IconButton(
+                      onPressed: onOpenFolder,
+                      tooltip: l10n.openFolder,
+                      icon: Icon(Icons.folder_open, size: 18, color: colorScheme.primary),
+                      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
                 ),
               ),
           ],

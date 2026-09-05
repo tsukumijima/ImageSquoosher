@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 /// OS のアクセント色と α Import Utility のタイポグラフィを使うテーマを作成する。
 ThemeData buildAppTheme(Color accentColor) {
@@ -20,6 +21,15 @@ ThemeData buildAppTheme(Color accentColor) {
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     fontFamilyFallback: fontFamilyFallback,
     colorScheme: colorScheme,
+    cupertinoOverrideTheme: CupertinoThemeData(
+      brightness: Brightness.dark,
+      primaryColor: accentColor,
+      primaryContrastingColor: Colors.white,
+      textTheme: const CupertinoTextThemeData(
+        textStyle: TextStyle(fontSize: 14, color: Colors.white, fontFamilyFallback: fontFamilyFallback),
+        actionTextStyle: TextStyle(fontSize: 14, color: Colors.white, fontFamilyFallback: fontFamilyFallback),
+      ),
+    ),
     scaffoldBackgroundColor: colorScheme.surface,
     appBarTheme: AppBarTheme(
       backgroundColor: colorScheme.surface,
@@ -97,6 +107,10 @@ ThemeData buildAppTheme(Color accentColor) {
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: Colors.white24),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.white12),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),

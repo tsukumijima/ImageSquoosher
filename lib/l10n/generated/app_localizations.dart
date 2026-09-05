@@ -161,7 +161,7 @@ abstract class AppLocalizations {
   /// No description provided for @emptyDescription.
   ///
   /// In ja, this message translates to:
-  /// **'JPEG・PNG・WebP をドロップするか、画像を追加してください。'**
+  /// **'JPEG・PNG・WebP をここへドロップするか、右上のボタンから選べます。'**
   String get emptyDescription;
 
   /// No description provided for @files.
@@ -347,7 +347,7 @@ abstract class AppLocalizations {
   /// No description provided for @outputSize.
   ///
   /// In ja, this message translates to:
-  /// **'出力寸法'**
+  /// **'出力'**
   String get outputSize;
 
   /// No description provided for @outputName.

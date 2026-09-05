@@ -42,7 +42,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get idle => 'Add images to begin';
 
   @override
-  String get emptyDescription => 'Drop JPEG, PNG, or WebP images here, or choose Add images.';
+  String get emptyDescription =>
+      'Drop JPEG, PNG, or WebP images here, or select them with the button at the top right.';
 
   @override
   String get files => 'files';
@@ -269,7 +270,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get restoreDefaults => 'Restore defaults';
 
   @override
-  String get customRatio => 'Custom ratio';
+  String get customRatio => 'Custom';
 
   @override
   String get horizontal => 'Width';

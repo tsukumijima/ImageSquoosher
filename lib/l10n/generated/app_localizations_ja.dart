@@ -42,7 +42,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get idle => '画像を追加してください';
 
   @override
-  String get emptyDescription => 'JPEG・PNG・WebP をドロップするか、画像を追加してください。';
+  String get emptyDescription => 'JPEG・PNG・WebP をここへドロップするか、右上のボタンから選べます。';
 
   @override
   String get files => 'ファイル';
@@ -135,7 +135,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get sourceSize => '元の寸法';
 
   @override
-  String get outputSize => '出力寸法';
+  String get outputSize => '出力';
 
   @override
   String get outputName => '出力ファイル';

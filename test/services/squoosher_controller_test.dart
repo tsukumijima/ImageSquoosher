@@ -115,6 +115,201 @@ void main() {
       skip: canRunPipelineEngine == false ? 'cjpeg is unavailable on this host.' : false,
     );
 
+    test(
+      '上書きで元入力を削除した結果は設定変更とリセット後も保持し、JPEG は再実行できる',
+      () async {
+        const fileDatesChannel = MethodChannel('net.tsukumijima.image-squoosher/finder_sync');
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+          fileDatesChannel,
+          (_) async => null,
+        );
+        addTearDown(
+          () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+            fileDatesChannel,
+            null,
+          ),
+        );
+
+        // 実変換で削除される形式と元パスが残る JPEG を同じキューで比較する
+        final inputFiles = <File>[];
+        for (final source in <({String extension, List<int> bytes})>[
+          (extension: 'png', bytes: image.encodePng(image.Image(width: 8, height: 6))),
+          (extension: 'webp', bytes: image.encodeWebP(image.Image(width: 8, height: 6))),
+          (extension: 'jpg', bytes: image.encodeJpg(image.Image(width: 8, height: 6))),
+        ]) {
+          final inputFile = File(
+            '${temporaryDirectory.path}${Platform.pathSeparator}source-${source.extension}.${source.extension}',
+          );
+          await inputFile.writeAsBytes(source.bytes, flush: true);
+          inputFiles.add(inputFile);
+        }
+        final controller = SquoosherController();
+        addTearDown(controller.dispose);
+        controller.addFiles(inputFiles.map((inputFile) => inputFile.path));
+        await _waitForImageDetails(controller);
+        expect(await controller.compress(const ConversionSettings(overwrite: true)), isTrue);
+        expect(controller.completedCount, 3);
+        final replacedImages = controller.images.take(2).toList();
+        for (final replacedImage in replacedImages) {
+          expect(await File(replacedImage.path).exists(), isFalse);
+          expect(replacedImage.isInputValid, isFalse);
+          expect(image.decodeJpg(await File(replacedImage.outputPath!).readAsBytes()), isNotNull);
+        }
+
+        // リセットと設定変更の両方で、再入力できる JPEG だけを待機へ戻す
+        controller.resetResults();
+        for (var index = 0; index < replacedImages.length; index += 1) {
+          expect(controller.images[index], same(replacedImages[index]));
+        }
+        expect(controller.images.last.status, QueuedImageStatus.queued);
+        const changedSettings = ConversionSettings(quality: 75, suffix: '_changed');
+        await controller.updateOutputPlans(changedSettings);
+        for (var index = 0; index < replacedImages.length; index += 1) {
+          expect(controller.images[index], same(replacedImages[index]));
+        }
+        expect(await controller.compress(changedSettings), isTrue);
+        expect(controller.completedCount, 3);
+        expect(controller.failedCount, 0);
+        expect(controller.hasPendingImages, isFalse);
+        expect(controller.images.last.outputPath, endsWith('source-jpg_changed.jpg'));
+      },
+      skip: canRunPipelineEngine == false ? 'cjpeg is unavailable on this host.' : false,
+    );
+
+    test(
+      'JPEG の上書き結果は変換前の寸法を保持し、再設定時は保存済みの寸法とサイズを使う',
+      () async {
+        // 日時反映の OS 境界を置き換え、同梱した cjpeg で実際の JPEG 上書きを確認する
+        const fileDatesChannel = MethodChannel('net.tsukumijima.image-squoosher/finder_sync');
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+          fileDatesChannel,
+          (_) async => null,
+        );
+        addTearDown(
+          () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+            fileDatesChannel,
+            null,
+          ),
+        );
+
+        final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}resized.jpg');
+        await inputFile.writeAsBytes(image.encodeJpg(image.Image(width: 80, height: 60)), flush: true);
+        final originalByteLength = await inputFile.length();
+        final controller = SquoosherController();
+        addTearDown(controller.dispose);
+        controller.addFiles(<String>[inputFile.path]);
+        await _waitForImageDetails(controller);
+
+        // 完了行には圧縮前後の比較に使う元寸法と元サイズを残す
+        expect(
+          await controller.compress(const ConversionSettings(overwrite: true, resizeEnabled: true, resizeValue: 40)),
+          isTrue,
+        );
+        final completedImage = controller.images.single;
+        final savedBytes = await inputFile.readAsBytes();
+        final savedImage = image.decodeJpg(savedBytes)!;
+        expect(completedImage.status, QueuedImageStatus.completed);
+        expect(completedImage.outputPath, inputFile.path);
+        expect(completedImage.sourceDimensions, const ImageDimensions(80, 60));
+        expect(completedImage.byteLength, originalByteLength);
+        expect(ImageDimensions(savedImage.width, savedImage.height), const ImageDimensions(40, 30));
+        expect(completedImage.outputDimensions, const ImageDimensions(40, 30));
+        expect(completedImage.outputByteLength, savedBytes.length);
+
+        // 再設定後の入力情報と出力計画は、現在のファイルへ更新する
+        await controller.updateOutputPlans(const ConversionSettings(overwrite: true));
+        final queuedImage = controller.images.single;
+        expect(queuedImage.status, QueuedImageStatus.queued);
+        expect(queuedImage.sourceDimensions, const ImageDimensions(40, 30));
+        expect(queuedImage.byteLength, savedBytes.length);
+        expect(queuedImage.outputDimensions, const ImageDimensions(40, 30));
+        expect(await inputFile.readAsBytes(), savedBytes);
+      },
+      skip: canRunPipelineEngine == false ? 'cjpeg is unavailable on this host.' : false,
+    );
+
+    test('完了後の再実行と同じ設定の再計画は生成済みの結果を保持する', () async {
+      final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}source.png');
+      await inputFile.writeAsBytes(image.encodePng(image.Image(width: 8, height: 6)), flush: true);
+      final engine = _ScriptedCompressionEngine();
+      final controller = SquoosherController(engine: engine);
+      addTearDown(controller.dispose);
+      controller.addFiles(<String>[inputFile.path]);
+      await _waitForImageDetails(controller);
+      await controller.compress(const ConversionSettings());
+      final completedImage = controller.images.single;
+
+      // 言語変更で設定オブジェクトが作り直されても、生成済みの結果は同じ行へ残る
+      await controller.updateOutputPlans(ConversionSettings());
+      expect(controller.hasPendingImages, isFalse);
+      expect(await controller.compress(const ConversionSettings()), isFalse);
+      expect(engine.startedPaths, <String>[inputFile.path]);
+      expect(controller.images.single.outputPath, completedImage.outputPath);
+      expect(controller.images.single.outputDimensions, completedImage.outputDimensions);
+      expect(controller.images.single.outputByteLength, completedImage.outputByteLength);
+      expect(controller.images.single.status, QueuedImageStatus.completed);
+
+      // 変換値の変更後は新しい出力計画と待機状態を表示する
+      await controller.updateOutputPlans(const ConversionSettings(quality: 75));
+      expect(controller.hasPendingImages, isTrue);
+      expect(controller.images.single.status, QueuedImageStatus.queued);
+      expect(controller.images.single.outputByteLength, isNull);
+      expect(await controller.compress(const ConversionSettings(quality: 75)), isTrue);
+      expect(engine.startedPaths, <String>[inputFile.path, inputFile.path]);
+    });
+
+    test('完了済み画像に追加した画像だけを変換し、既存の出力情報を保持する', () async {
+      final inputFiles = <File>[
+        File('${temporaryDirectory.path}${Platform.pathSeparator}first.png'),
+        File('${temporaryDirectory.path}${Platform.pathSeparator}added.png'),
+      ];
+      for (final inputFile in inputFiles) {
+        await inputFile.writeAsBytes(image.encodePng(image.Image(width: 8, height: 6)), flush: true);
+      }
+      final engine = _ScriptedCompressionEngine();
+      final controller = SquoosherController(engine: engine);
+      addTearDown(controller.dispose);
+      controller.addFiles(<String>[inputFiles.first.path]);
+      await _waitForImageDetails(controller);
+      await controller.compress(const ConversionSettings());
+      final completedImage = controller.images.first;
+
+      controller.addFiles(<String>[inputFiles.last.path]);
+      await _waitForImageDetails(controller);
+      await controller.updateOutputPlans(const ConversionSettings());
+      expect(controller.hasPendingImages, isTrue);
+      await controller.compress(const ConversionSettings());
+
+      expect(engine.startedPaths, inputFiles.map((inputFile) => inputFile.path));
+      expect(controller.images.first.outputPath, completedImage.outputPath);
+      expect(controller.images.first.outputDimensions, completedImage.outputDimensions);
+      expect(controller.images.first.outputByteLength, completedImage.outputByteLength);
+      expect(controller.completedCount, 2);
+      expect(controller.hasPendingImages, isFalse);
+    });
+
+    test('変換中の設定変更は開始時の出力計画を保持する', () async {
+      final inputFile = File('${temporaryDirectory.path}${Platform.pathSeparator}source.png');
+      await inputFile.writeAsBytes(image.encodePng(image.Image(width: 8, height: 6)), flush: true);
+      late SquoosherController controller;
+      final engine = _ScriptedCompressionEngine(
+        onFirstItemStarted: () {
+          unawaited(controller.updateOutputPlans(const ConversionSettings(suffix: '_changed')));
+          expect(controller.images.single.outputPath, endsWith('source_resized.jpg'));
+          expect(controller.images.single.status, QueuedImageStatus.processing);
+        },
+      );
+      controller = SquoosherController(engine: engine);
+      addTearDown(controller.dispose);
+      controller.addFiles(<String>[inputFile.path]);
+      await _waitForImageDetails(controller);
+      await controller.compress(const ConversionSettings());
+      final outputPath = controller.images.single.outputPath;
+      await controller.updateOutputPlans(const ConversionSettings());
+      expect(controller.images.single.status, QueuedImageStatus.completed);
+      expect(controller.images.single.outputPath, outputPath);
+    });
+
     test('個別失敗の後も後続の画像を変換する', () async {
       final inputFiles = <File>[
         File('${temporaryDirectory.path}${Platform.pathSeparator}first.png'),
@@ -140,6 +335,12 @@ void main() {
           QueuedImageStatus.completed,
         ],
       );
+      expect(controller.hasPendingImages, isTrue);
+      await controller.compress(const ConversionSettings());
+      expect(engine.startedPaths, <String>[
+        ...inputFiles.map((inputFile) => inputFile.path),
+        inputFiles[1].path,
+      ]);
     });
 
     test('停止要求後は未開始の画像を停止済みとして残す', () async {
@@ -164,6 +365,9 @@ void main() {
         controller.images.map((queuedImage) => queuedImage.status),
         <QueuedImageStatus>[QueuedImageStatus.completed, QueuedImageStatus.stopped],
       );
+      await controller.compress(const ConversionSettings());
+      expect(engine.startedPaths, inputFiles.map((inputFile) => inputFile.path));
+      expect(controller.completedCount, 2);
     });
 
     test('出力計画で失敗しても処理状態を戻し、設定を直せば再実行できる', () async {

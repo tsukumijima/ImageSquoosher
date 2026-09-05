@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 
@@ -14,6 +15,7 @@ class HomeHeader extends StatelessWidget {
     super.key,
     required this.isCompressing,
     required this.isFinderSyncEnabled,
+    required this.isFinderIntegrationAvailable,
     required this.onAddFiles,
     required this.onFinderSettings,
     required this.onMenuAction,
@@ -21,6 +23,7 @@ class HomeHeader extends StatelessWidget {
 
   final bool isCompressing;
   final bool isFinderSyncEnabled;
+  final bool isFinderIntegrationAvailable;
   final VoidCallback onAddFiles;
   final VoidCallback onFinderSettings;
   final ValueChanged<HomeMenuAction> onMenuAction;
@@ -48,28 +51,35 @@ class HomeHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            ),
+          CupertinoButton.filled(
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            minimumSize: const Size(0, 34),
+            borderRadius: BorderRadius.circular(8),
             onPressed: isCompressing ? null : onAddFiles,
-            icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
-            label: Text(l10n.addFiles, maxLines: 1),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(CupertinoIcons.photo_on_rectangle, size: 18),
+                const SizedBox(width: 8),
+                Text(l10n.addFiles, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
           ),
           const SizedBox(width: 4),
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: IconButton(
-              tooltip: isFinderSyncEnabled ? l10n.finderSyncManage : l10n.finderSyncEnable,
-              onPressed: isCompressing ? null : onFinderSettings,
-              icon: Icon(
-                isFinderSyncEnabled ? Icons.extension : Icons.extension_off_outlined,
-                color: isFinderSyncEnabled ? Theme.of(context).colorScheme.primary : null,
+          if (isFinderIntegrationAvailable)
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: IconButton(
+                tooltip: isFinderSyncEnabled ? l10n.finderSyncManage : l10n.finderSyncEnable,
+                onPressed: isCompressing ? null : onFinderSettings,
+                icon: Icon(
+                  isFinderSyncEnabled ? Icons.extension : Icons.extension_off_outlined,
+                  color: isFinderSyncEnabled ? Theme.of(context).colorScheme.primary : null,
+                ),
               ),
             ),
-          ),
           SizedBox(
             width: 40,
             height: 40,
@@ -83,7 +93,11 @@ class HomeHeader extends StatelessWidget {
                 const PopupMenuDivider(),
                 PopupMenuItem(value: HomeMenuAction.japanese, child: Text(l10n.japanese)),
                 PopupMenuItem(value: HomeMenuAction.english, child: Text(l10n.english)),
-                PopupMenuItem(value: HomeMenuAction.restoreDefaults, child: Text(l10n.restoreDefaults)),
+                PopupMenuItem(
+                  value: HomeMenuAction.restoreDefaults,
+                  enabled: !isCompressing,
+                  child: Text(l10n.restoreDefaults),
+                ),
                 const PopupMenuDivider(),
                 PopupMenuItem(value: HomeMenuAction.about, child: Text(l10n.about)),
               ],

@@ -10,7 +10,6 @@ import 'package:image_squoosher/services/settings_service.dart';
 import 'package:image_squoosher/services/squoosher_controller.dart';
 import 'package:image_squoosher/ui/home_screen.dart';
 import 'package:image_squoosher/ui/theme.dart';
-import 'package:image_squoosher/ui/widgets/queued_image_row.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {
@@ -106,14 +105,18 @@ void main() {
 
     await _waitFor(
       tester,
-      () => find.byType(QueuedImageRow).evaluate().length == 3 && didLoadFinderSelection && didLoadFinderSyncStatus,
+      () => controller.images.length == 3 && didLoadFinderSelection && didLoadFinderSyncStatus,
     );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       finderMethodChannel,
       null,
     );
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
-    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('aspect-ratio-select')));
+    await tester.pumpAndSettle(
+      const Duration(milliseconds: 100),
+      EnginePhase.sendSemanticsUpdate,
+      const Duration(seconds: 10),
+    );
     await tester.tap(find.text('1:1').last);
     await tester.pump();
     await tester.tap(find.text('リサイズ'));
@@ -134,8 +137,12 @@ void main() {
     final firstOutput = File('${temporaryDirectory.path}${Platform.pathSeparator}first_e2e.jpg');
     final secondOutput = File('${temporaryDirectory.path}${Platform.pathSeparator}second_e2e.jpg');
     expect(find.text('圧縮完了：2件成功、1件失敗'), findsOneWidget);
-    expect(find.text('完了'), findsNWidgets(2));
-    await tester.drag(find.byType(ListView), const Offset(0, -200));
+    // 画面外の行は必要になった時点で描画されるため、結果一覧までスクロールして確認する
+    await tester.scrollUntilVisible(
+      find.byKey(ValueKey(brokenInput.path)),
+      150,
+      scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+    );
     await tester.pumpAndSettle();
     expect(find.text('失敗'), findsOneWidget);
     expect(await firstOutput.exists(), isTrue);
@@ -150,6 +157,51 @@ void main() {
     if (Platform.isMacOS) {
       expect(await _readMacOSCreationTime(firstOutput), firstSourceCreationTime);
     }
+
+    // 上書き対象は専用の一時 PNG とし、通常保存で使った元画像と出力を保持する
+    final overwriteInput = File('${temporaryDirectory.path}${Platform.pathSeparator}overwrite.png');
+    await overwriteInput.writeAsBytes(image.encodePng(image.Image(width: 64, height: 40)), flush: true);
+    controller.clear();
+    controller.addFiles(<String>[overwriteInput.path]);
+    await _waitFor(tester, () => controller.images.single.sourceDimensions != null);
+    await tester.scrollUntilVisible(
+      find.text('元のファイルを上書きする'),
+      -150,
+      scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+    );
+    await tester.tap(find.text('元のファイルを上書きする'));
+    await tester.pump();
+    await tester.ensureVisible(find.text('圧縮を開始'));
+    await tester.tap(find.text('圧縮を開始'));
+    await _waitFor(
+      tester,
+      () => controller.completedCount == 1 && controller.isCompressing == false,
+    );
+
+    // PNG の置き換え完了と、保存された JPEG の実寸法を確認する
+    final overwriteOutput = File('${temporaryDirectory.path}${Platform.pathSeparator}overwrite.jpg');
+    expect(await overwriteOutput.exists(), isTrue);
+    expect(await overwriteInput.exists(), isFalse);
+    final overwrittenImage = image.decodeJpg(await overwriteOutput.readAsBytes());
+    expect(overwrittenImage?.width, 24);
+    expect(overwrittenImage?.height, 24);
+    expect(controller.images.single.outputPath, overwriteOutput.path);
+
+    // 元 PNG が消えた後も、完了行のサムネイルが保存済み JPEG を参照することを確認する
+    final completedRow = find.byKey(ValueKey(overwriteInput.path));
+    await tester.scrollUntilVisible(
+      completedRow,
+      150,
+      scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: completedRow, matching: find.text('完了')), findsOneWidget);
+    final thumbnail = tester.widget<Image>(find.descendant(of: completedRow, matching: find.byType(Image)));
+    final thumbnailProvider = thumbnail.image;
+    final fileImage =
+        (thumbnailProvider is ResizeImage ? thumbnailProvider.imageProvider : thumbnailProvider) as FileImage;
+    expect(fileImage.file.path, overwriteOutput.path);
+    expect(find.descendant(of: completedRow, matching: find.byIcon(Icons.image_not_supported_outlined)), findsNothing);
   });
 }
 

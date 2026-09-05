@@ -24,7 +24,7 @@ class EmptyDropArea extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final borderColor = isDropActive ? colorScheme.primary : colorScheme.outlineVariant;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 2, 20, 10),
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 20),
       child: InkWell(
         onTap: isEnabled ? onAddFiles : null,
         borderRadius: BorderRadius.circular(12),
@@ -35,26 +35,26 @@ class EmptyDropArea extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             color: isDropActive ? colorScheme.primary.withValues(alpha: 0.08) : null,
           ),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.add_photo_alternate_outlined, size: 32, color: borderColor),
-                const SizedBox(height: 6),
-                Text(isDropActive ? l10n.dropImages : l10n.idle, style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 2),
-                Text(
-                  l10n.emptyDescription,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 6),
-                OutlinedButton.icon(
-                  onPressed: isEnabled ? onAddFiles : null,
-                  icon: const Icon(Icons.folder_open, size: 18),
-                  label: Text(l10n.addFiles),
+                const SizedBox(width: 16),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(isDropActive ? l10n.dropImages : l10n.idle, style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.emptyDescription,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

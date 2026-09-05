@@ -1,6 +1,7 @@
 /// 圧縮設定を小さなウィンドウへ常時表示するパネル。
 library;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,6 +9,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../models/aspect_ratio.dart' as image_settings;
 import '../../models/conversion_settings.dart';
 import '../../utils/output_name_planner.dart';
+import 'cupertino_select.dart';
 
 /// 画像一覧の表示領域を保ちながら、すべての圧縮設定を直接編集できるパネルです。
 class ConversionSettingsPanel extends StatefulWidget {
@@ -33,12 +35,13 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
   final _ratioHeightFocusNode = FocusNode();
   final _resizeFocusNode = FocusNode();
   final _suffixFocusNode = FocusNode();
+  bool _hasQualityFocus = false;
 
   @override
   void initState() {
     super.initState();
-    _ratioWidthController = TextEditingController(text: widget.settings.aspectRatio.horizontal.toString());
-    _ratioHeightController = TextEditingController(text: widget.settings.aspectRatio.vertical.toString());
+    _ratioWidthController = TextEditingController(text: _formatRatioValue(widget.settings.aspectRatio.horizontal));
+    _ratioHeightController = TextEditingController(text: _formatRatioValue(widget.settings.aspectRatio.vertical));
     _resizeController = TextEditingController(text: widget.settings.resizeValue.toString());
     _suffixController = TextEditingController(text: widget.settings.suffix);
     // 編集を終えた数値欄は、変換で使う最後の有効値へ表示を戻す
@@ -53,14 +56,14 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     _synchronizeController(
       _ratioWidthController,
       _ratioWidthFocusNode,
-      settings.aspectRatio.horizontal.toString(),
-      settings.aspectRatio.horizontal.toString(),
+      _formatRatioValue(settings.aspectRatio.horizontal),
+      _formatRatioValue(settings.aspectRatio.horizontal),
     );
     _synchronizeController(
       _ratioHeightController,
       _ratioHeightFocusNode,
-      settings.aspectRatio.vertical.toString(),
-      settings.aspectRatio.vertical.toString(),
+      _formatRatioValue(settings.aspectRatio.vertical),
+      _formatRatioValue(settings.aspectRatio.vertical),
     );
     _synchronizeController(
       _resizeController,
@@ -78,15 +81,15 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     _synchronizeController(
       _ratioWidthController,
       _ratioWidthFocusNode,
-      oldWidget.settings.aspectRatio.horizontal.toString(),
-      widget.settings.aspectRatio.horizontal.toString(),
+      _formatRatioValue(oldWidget.settings.aspectRatio.horizontal),
+      _formatRatioValue(widget.settings.aspectRatio.horizontal),
       areEquivalent: _haveEqualDoubleValue,
     );
     _synchronizeController(
       _ratioHeightController,
       _ratioHeightFocusNode,
-      oldWidget.settings.aspectRatio.vertical.toString(),
-      widget.settings.aspectRatio.vertical.toString(),
+      _formatRatioValue(oldWidget.settings.aspectRatio.vertical),
+      _formatRatioValue(widget.settings.aspectRatio.vertical),
       areEquivalent: _haveEqualDoubleValue,
     );
     _synchronizeController(
@@ -137,6 +140,12 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
+  /// 整数の比率を小数点なしで表示し、小数の比率はそのまま表示します。
+  String _formatRatioValue(double value) {
+    // 整数型の上限を超える値も保ち、小数点以下がゼロの表記だけを短くする
+    return value.toString().replaceFirst(RegExp(r'\.0$'), '');
+  }
+
   /// 表記が異なっても同じ小数値を表す入力かを判定します。
   bool _haveEqualDoubleValue(String currentValue, String savedValue) {
     return double.tryParse(currentValue) == double.tryParse(savedValue);
@@ -175,12 +184,12 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
     );
   }
 
-  /// 高さ 34px の入力欄を作り、固定設定領域の中へ各値を収めます。
-  InputDecoration _inputDecoration({String? suffixText}) {
-    return InputDecoration(
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      suffixText: suffixText,
+  /// 入力欄の背景と枠をドロップダウンと同じ階調へそろえます。
+  BoxDecoration _textFieldDecoration({bool isEnabled = true}) {
+    return BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      border: Border.all(color: isEnabled ? Colors.white24 : Colors.white12),
+      borderRadius: BorderRadius.circular(8),
     );
   }
 
@@ -193,20 +202,21 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
   }) {
     // 無効時も配置と保存値を保ち、チェックとラベルを同じ有効状態で表示する
     final isEnabled = onChanged != null;
-    final labelStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
+    final labelStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      fontSize: 14,
       color: isEnabled ? null : Theme.of(context).disabledColor,
     );
     final content = InkWell(
       borderRadius: BorderRadius.circular(6),
       onTap: onChanged == null ? null : () => onChanged(!value),
       child: SizedBox(
-        height: 28,
+        height: 32,
         child: Row(
           mainAxisSize: isExpanded ? MainAxisSize.max : MainAxisSize.min,
           children: [
             SizedBox(
               width: 24,
-              child: Checkbox(value: value, onChanged: onChanged),
+              child: CupertinoCheckbox(value: value, onChanged: onChanged),
             ),
             const SizedBox(width: 4),
             if (isExpanded)
@@ -225,25 +235,14 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
   /// 比率のプリセットを選ぶドロップダウンを作ります。
   Widget _buildAspectRatioDropdown(AppLocalizations l10n) {
     final settings = widget.settings;
-    return DropdownButtonFormField<String>(
-      key: ValueKey(settings.aspectRatio.preset?.name ?? 'custom'),
-      initialValue: settings.aspectRatio.preset?.name ?? 'custom',
-      isExpanded: true,
-      decoration: _inputDecoration(),
-      items: [
-        ...image_settings.AspectRatioPreset.values.map(
-          (preset) => DropdownMenuItem(
-            value: preset.name,
-            child: Text(
-              preset == image_settings.AspectRatioPreset.original ? l10n.originalAspectRatio : preset.label,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.fade,
-            ),
-          ),
-        ),
-        DropdownMenuItem(value: 'custom', child: Text(l10n.customRatio, maxLines: 1, softWrap: false)),
-      ],
+    return CupertinoSelect<String>(
+      key: const ValueKey('aspect-ratio-select'),
+      value: settings.aspectRatio.preset?.name ?? 'custom',
+      items: {
+        for (final preset in image_settings.AspectRatioPreset.values)
+          preset.name: preset == image_settings.AspectRatioPreset.original ? l10n.originalAspectRatio : preset.label,
+        'custom': l10n.customRatio,
+      },
       onChanged: (value) {
         if (value == 'custom') {
           _updateSettings(
@@ -265,17 +264,21 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
   Widget _buildCustomRatioFields() {
     final settings = widget.settings;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: TextField(
+          child: CupertinoTextField(
             key: const ValueKey('ratio-width-field'),
             controller: _ratioWidthController,
             focusNode: _ratioWidthFocusNode,
+            decoration: _textFieldDecoration(),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14),
             keyboardType: TextInputType.number,
-            decoration: _inputDecoration(),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             onChanged: (value) {
               final horizontal = double.tryParse(value);
-              if (horizontal != null && horizontal > 0) {
+              // 貼り付けによる Infinity なども検査し、計算可能な正の値だけを設定へ保存する
+              if (horizontal != null && horizontal.isFinite && horizontal > 0) {
                 _updateSettings(
                   aspectRatio: image_settings.AspectRatio.custom(
                     horizontal: horizontal,
@@ -286,17 +289,23 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
             },
           ),
         ),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 5), child: Text(':')),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          child: Center(child: Text(':', style: Theme.of(context).textTheme.bodyMedium)),
+        ),
         Expanded(
-          child: TextField(
+          child: CupertinoTextField(
             key: const ValueKey('ratio-height-field'),
             controller: _ratioHeightController,
             focusNode: _ratioHeightFocusNode,
+            decoration: _textFieldDecoration(),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14),
             keyboardType: TextInputType.number,
-            decoration: _inputDecoration(),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             onChanged: (value) {
               final vertical = double.tryParse(value);
-              if (vertical != null && vertical > 0) {
+              // 横と同じ条件で検査し、寸法計算に使える比率を保持する
+              if (vertical != null && vertical.isFinite && vertical > 0) {
                 _updateSettings(
                   aspectRatio: image_settings.AspectRatio.custom(
                     horizontal: settings.aspectRatio.horizontal,
@@ -315,20 +324,25 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
   Widget _buildAspectRatioField(AppLocalizations l10n) {
     final isCustom = widget.settings.aspectRatio.preset == null;
     return SizedBox(
-      height: 34,
+      height: 40,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            width: 116,
-            child: Text(
-              l10n.aspectRatio,
-              maxLines: 1,
-              softWrap: false,
-              style: Theme.of(context).textTheme.labelMedium,
+            width: 180,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                l10n.aspectRatio,
+                maxLines: 1,
+                softWrap: false,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14),
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           if (isCustom) ...[
-            SizedBox(width: 150, child: _buildAspectRatioDropdown(l10n)),
+            Expanded(child: _buildAspectRatioDropdown(l10n)),
             const SizedBox(width: 8),
             Expanded(child: _buildCustomRatioFields()),
           ] else
@@ -342,11 +356,12 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
   Widget _buildResizeField(AppLocalizations l10n) {
     final settings = widget.settings;
     return SizedBox(
-      height: 34,
+      height: 40,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            width: 116,
+            width: 180,
             child: _buildCheckbox(
               label: l10n.resize,
               value: settings.resizeEnabled,
@@ -354,35 +369,41 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
             ),
           ),
           const SizedBox(width: 8),
-          SizedBox(
-            width: 112,
-            child: DropdownButtonFormField<ResizeAxis>(
-              key: ValueKey(settings.resizeAxis),
-              initialValue: settings.resizeAxis,
-              isExpanded: true,
-              decoration: _inputDecoration(),
-              items: [
-                DropdownMenuItem(value: ResizeAxis.width, child: Text(l10n.horizontal, maxLines: 1)),
-                DropdownMenuItem(value: ResizeAxis.height, child: Text(l10n.vertical, maxLines: 1)),
-              ],
-              onChanged: settings.resizeEnabled
-                  ? (value) {
-                      if (value != null) {
-                        _updateSettings(resizeAxis: value);
-                      }
-                    }
-                  : null,
+          Expanded(
+            child: CupertinoSelect<ResizeAxis>(
+              key: const ValueKey('resize-axis-select'),
+              value: settings.resizeAxis,
+              items: {
+                ResizeAxis.width: l10n.horizontal,
+                ResizeAxis.height: l10n.vertical,
+              },
+              onChanged: settings.resizeEnabled ? (value) => _updateSettings(resizeAxis: value) : null,
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: TextField(
+            child: CupertinoTextField(
               key: const ValueKey('resize-value-field'),
               controller: _resizeController,
               focusNode: _resizeFocusNode,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontSize: 14,
+                color: settings.resizeEnabled ? null : Theme.of(context).disabledColor,
+              ),
               enabled: settings.resizeEnabled,
+              decoration: _textFieldDecoration(isEnabled: settings.resizeEnabled),
               keyboardType: TextInputType.number,
-              decoration: _inputDecoration(),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              suffix: Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Text(
+                  'px',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                    color: settings.resizeEnabled ? null : Theme.of(context).disabledColor,
+                  ),
+                ),
+              ),
               onChanged: (value) {
                 final resizeValue = int.tryParse(value);
                 if (resizeValue != null && resizeValue > 0) {
@@ -391,8 +412,6 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
               },
             ),
           ),
-          const SizedBox(width: 6),
-          Text('px', maxLines: 1, style: Theme.of(context).textTheme.labelMedium),
         ],
       ),
     );
@@ -406,33 +425,67 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 6),
       clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // 各設定のラベル位置をそろえ、上から下へ1方向に確認できる並びにする
             SizedBox(
-              height: 32,
+              height: 40,
               child: Row(
                 children: [
                   SizedBox(
-                    width: 116,
+                    width: 180,
                     child: Text(
                       l10n.quality,
                       maxLines: 1,
                       softWrap: false,
-                      style: Theme.of(context).textTheme.labelMedium,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Slider(
-                      value: settings.quality.toDouble(),
-                      min: 1,
-                      max: 100,
-                      divisions: 99,
-                      onChanged: (value) => _updateSettings(quality: value.round()),
+                    // デスクトップでは Tab で画質へ移動し、矢印キーで1ずつ調整できるようにする
+                    child: Focus(
+                      key: const ValueKey('quality-slider-focus'),
+                      onFocusChange: (hasFocus) => setState(() => _hasQualityFocus = hasFocus),
+                      onKeyEvent: (node, event) {
+                        // 押下と長押しの繰り返しを扱い、キーを離した通知は通常の伝播へ戻す
+                        if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+                          return KeyEventResult.ignored;
+                        }
+                        final adjustment = switch (event.logicalKey) {
+                          LogicalKeyboardKey.arrowLeft || LogicalKeyboardKey.arrowDown => -1,
+                          LogicalKeyboardKey.arrowRight || LogicalKeyboardKey.arrowUp => 1,
+                          _ => 0,
+                        };
+                        // Tab などの移動操作は親へ渡し、画質の変更だけをここで処理する
+                        if (adjustment == 0) {
+                          return KeyEventResult.ignored;
+                        }
+                        _updateSettings(quality: (settings.quality + adjustment).clamp(1, 100));
+                        return KeyEventResult.handled;
+                      },
+                      child: DecoratedBox(
+                        // 装飾だけを重ね、フォーカスの有無によらずスライダーの寸法を保つ
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: _hasQualityFocus ? CupertinoTheme.of(context).primaryColor : Colors.transparent,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: CupertinoSlider(
+                          value: settings.quality.toDouble(),
+                          min: 1,
+                          max: 100,
+                          divisions: 99,
+                          onChanged: (value) => _updateSettings(quality: value.round()),
+                        ),
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 16),
                   Container(
                     width: 36,
                     padding: const EdgeInsets.symmetric(vertical: 3),
@@ -443,7 +496,8 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                     child: Text(
                       '${settings.quality}',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 14,
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                         fontWeight: FontWeight.w600,
                       ),
@@ -452,60 +506,68 @@ class _ConversionSettingsPanelState extends State<ConversionSettingsPanel> {
                 ],
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             _buildAspectRatioField(l10n),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             _buildResizeField(l10n),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCheckbox(
-                    label: l10n.allowUpscale,
-                    value: settings.allowUpscale,
-                    onChanged: settings.resizeEnabled ? (value) => _updateSettings(allowUpscale: value) : null,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildCheckbox(
-                    label: l10n.overwrite,
-                    value: settings.overwrite,
-                    onChanged: (value) => _updateSettings(overwrite: value),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 4),
+            _buildCheckbox(
+              label: l10n.allowUpscale,
+              value: settings.allowUpscale,
+              onChanged: settings.resizeEnabled ? (value) => _updateSettings(allowUpscale: value) : null,
             ),
+            const SizedBox(height: 4),
             _buildCheckbox(
               label: l10n.exifRemoval,
               value: settings.stripMetadata,
               onChanged: (value) => _updateSettings(stripMetadata: value),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
+            // 上書きの選択に続けて、出力名へ使うサフィックスを確認できるようにする
+            _buildCheckbox(
+              label: l10n.overwrite,
+              value: settings.overwrite,
+              onChanged: (value) => _updateSettings(overwrite: value),
+            ),
+            const SizedBox(height: 8),
             SizedBox(
-              height: 34,
+              height: 40,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(
-                    width: 116,
-                    child: Text(
-                      l10n.suffix,
-                      maxLines: 1,
-                      softWrap: false,
-                      style: Theme.of(context).textTheme.labelMedium,
+                    width: 180,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        l10n.suffix,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 14,
+                          color: settings.overwrite ? Theme.of(context).disabledColor : null,
+                        ),
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: TextField(
+                    child: CupertinoTextField(
                       key: const ValueKey('suffix-field'),
                       controller: _suffixController,
                       focusNode: _suffixFocusNode,
+                      enabled: !settings.overwrite,
+                      decoration: _textFieldDecoration(isEnabled: !settings.overwrite),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 14,
+                        color: settings.overwrite ? Theme.of(context).disabledColor : null,
+                      ),
                       inputFormatters: [
                         TextInputFormatter.withFunction(
                           (oldValue, newValue) => OutputNamePlanner.isValidSuffix(newValue.text) ? newValue : oldValue,
                         ),
                       ],
-                      decoration: _inputDecoration(),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       onChanged: (value) => _updateSettings(suffix: value),
                     ),
                   ),

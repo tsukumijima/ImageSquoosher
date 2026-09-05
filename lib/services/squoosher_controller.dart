@@ -55,6 +55,7 @@ class QueuedImage {
     bool? isInputValid,
     String? errorMessage,
     bool clearErrorMessage = false,
+    bool clearOutputByteLength = false,
   }) {
     return QueuedImage(
       path: path,
@@ -62,7 +63,7 @@ class QueuedImage {
       sourceDimensions: sourceDimensions ?? this.sourceDimensions,
       outputPath: outputPath ?? this.outputPath,
       outputDimensions: outputDimensions ?? this.outputDimensions,
-      outputByteLength: outputByteLength ?? this.outputByteLength,
+      outputByteLength: clearOutputByteLength ? null : outputByteLength ?? this.outputByteLength,
       status: status ?? this.status,
       isInputValid: isInputValid ?? this.isInputValid,
       errorMessage: clearErrorMessage ? null : errorMessage ?? this.errorMessage,
@@ -277,6 +278,12 @@ class SquoosherController extends ChangeNotifier {
   int get completedCount => _images.where((image) => image.status == QueuedImageStatus.completed).length;
   int get failedCount => _images.where((image) => image.status == QueuedImageStatus.failed).length;
   bool get hasValidImages => _images.any((image) => image.isInputValid);
+  bool get hasPendingImages => _images.any(
+    (image) =>
+        image.isInputValid &&
+        image.status != QueuedImageStatus.completed &&
+        image.status != QueuedImageStatus.processing,
+  );
 
   /// 外部のファイル選択機能から得たパスを一覧へ加え、重複は除外します。
   int addFiles(Iterable<String> paths) {
@@ -353,7 +360,16 @@ class SquoosherController extends ChangeNotifier {
     }
     for (var index = 0; index < _images.length; index += 1) {
       if (_images[index].isInputValid) {
-        _images[index] = _images[index].copyWith(status: QueuedImageStatus.queued, clearErrorMessage: true);
+        // JPEG の上書き結果を再処理するときは、保存済みの画像を新しい入力として扱う
+        final hasReplacedInput =
+            _images[index].status == QueuedImageStatus.completed && _images[index].path == _images[index].outputPath;
+        _images[index] = _images[index].copyWith(
+          sourceDimensions: hasReplacedInput ? _images[index].outputDimensions : null,
+          byteLength: hasReplacedInput ? _images[index].outputByteLength : null,
+          status: QueuedImageStatus.queued,
+          clearErrorMessage: true,
+          clearOutputByteLength: true,
+        );
       }
     }
     notifyListeners();
@@ -361,13 +377,57 @@ class SquoosherController extends ChangeNotifier {
 
   /// 指定された変換条件を各行の予定出力へ反映します。
   Future<void> updateOutputPlans(ConversionSettings settings) async {
+    // 実行中は開始時の条件と結果表示を保持する
+    if (_isCompressing) {
+      return;
+    }
+    await _updateOutputPlans(settings);
+  }
+
+  /// 変換条件の実変更を判定し、未完了の行に出力計画を作ります。
+  Future<void> _updateOutputPlans(ConversionSettings settings) async {
     final outputPlanGeneration = ++_outputPlanGeneration;
+    final previousSettings = _displaySettings;
+    // 言語切り替えや画像追加でも呼ばれるため、変換値が変わったときだけ結果を待機へ戻す
+    if (previousSettings != null &&
+        (previousSettings.aspectRatio != settings.aspectRatio ||
+            previousSettings.quality != settings.quality ||
+            previousSettings.resizeEnabled != settings.resizeEnabled ||
+            previousSettings.resizeAxis != settings.resizeAxis ||
+            previousSettings.resizeValue != settings.resizeValue ||
+            previousSettings.allowUpscale != settings.allowUpscale ||
+            previousSettings.stripMetadata != settings.stripMetadata ||
+            previousSettings.suffix != settings.suffix ||
+            previousSettings.overwrite != settings.overwrite)) {
+      for (var index = 0; index < _images.length; index += 1) {
+        if (_images[index].isInputValid) {
+          // 完了表示の比較情報は待機へ戻す時点で、上書き後の入力寸法とサイズへ切り替える
+          final hasReplacedInput =
+              _images[index].status == QueuedImageStatus.completed && _images[index].path == _images[index].outputPath;
+          _images[index] = _images[index].copyWith(
+            sourceDimensions: hasReplacedInput ? _images[index].outputDimensions : null,
+            byteLength: hasReplacedInput ? _images[index].outputByteLength : null,
+            status: QueuedImageStatus.queued,
+            clearErrorMessage: true,
+            clearOutputByteLength: true,
+          );
+        }
+      }
+    }
     _displaySettings = settings;
-    final plannedPaths = <String>{};
+    final plannedPaths = _images
+        .where((image) => image.status == QueuedImageStatus.completed)
+        .map((image) => image.outputPath)
+        .whereType<String>()
+        .toSet();
     final existingPathsByDirectory = <String, Set<String>>{};
     final outputPlans = <String, ({String outputPath, ImageDimensions outputDimensions})>{};
     final imagesToPlan = List<QueuedImage>.of(_images);
     for (final queuedImage in imagesToPlan) {
+      // 完了行は実際に生成したパス、寸法、サイズを保持する
+      if (queuedImage.status == QueuedImageStatus.completed) {
+        continue;
+      }
       final sourceDimensions = queuedImage.sourceDimensions;
       if (sourceDimensions == null) {
         continue;
@@ -411,7 +471,7 @@ class SquoosherController extends ChangeNotifier {
 
   /// 変換を開始し、完了・失敗をそれぞれの行へ記録します。
   Future<bool> compress(ConversionSettings settings) async {
-    if (hasValidImages == false || _isCompressing) {
+    if (hasPendingImages == false || _isCompressing) {
       return false;
     }
 
@@ -420,16 +480,19 @@ class SquoosherController extends ChangeNotifier {
     _lastRunWasStopped = false;
     _stopToken = ImageConversionStopToken();
     for (var index = 0; index < _images.length; index += 1) {
-      if (_images[index].isInputValid) {
+      if (_images[index].isInputValid && _images[index].status != QueuedImageStatus.completed) {
         _images[index] = _images[index].copyWith(status: QueuedImageStatus.queued, clearErrorMessage: true);
       }
     }
     try {
-      await updateOutputPlans(settings);
+      await _updateOutputPlans(settings);
       notifyListeners();
 
       final result = await _engine.compress(
-        CompressionRequest(images: images.where((image) => image.isInputValid).toList(), settings: settings),
+        CompressionRequest(
+          images: images.where((image) => image.isInputValid && image.status == QueuedImageStatus.queued).toList(),
+          settings: settings,
+        ),
         stopToken: _stopToken!,
         onItemStarted: _markProcessing,
         onItemCompleted: _markCompleted,
@@ -500,6 +563,8 @@ class SquoosherController extends ChangeNotifier {
   /// 成功した出力の寸法とファイルサイズを行へ表示します。
   Future<void> _markCompleted(ImageConversionResult result) async {
     final outputSize = await result.outputFile.length();
+    // PNG / WebP の上書きで元入力が削除された行は、再実行の対象から外して成功結果を保持する
+    final isInputValid = await result.inputFile.exists();
     _replaceByPath(
       result.inputFile.path,
       (current) => current.copyWith(
@@ -508,6 +573,7 @@ class SquoosherController extends ChangeNotifier {
         outputDimensions: ImageDimensions(result.outputWidth, result.outputHeight),
         outputByteLength: outputSize,
         status: QueuedImageStatus.completed,
+        isInputValid: isInputValid,
         clearErrorMessage: true,
       ),
     );
