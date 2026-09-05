@@ -15,7 +15,10 @@ import 'package:image_squoosher/services/image_pipeline_types.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const fileOperationsChannel = MethodChannel('net.tsukumijima.image-squoosher/finder_sync');
-  const sRgbIccProfilePath = '/System/Library/ColorSync/Profiles/sRGB Profile.icc';
+  // 各 OS に標準搭載されたプロファイルで、配布時と同じメタデータ転送を検証する
+  final sRgbIccProfilePath = Platform.isWindows
+      ? '${Platform.environment['SystemRoot']}/System32/spool/drivers/color/sRGB Color Space Profile.icm'
+      : '/System/Library/ColorSync/Profiles/sRGB Profile.icc';
   // 既定では配布物と同じ MozJPEG 4.1.1 のリポジトリ内ビルドを使い、配布検証時だけ環境変数の実行ファイルへ差し替える
   final repositoryCjpegPath = Platform.isWindows
       ? 'native/mozjpeg/windows/cjpeg.exe'
@@ -260,7 +263,7 @@ void main() {
           }
         }
       },
-      skip: canRunMetadataTests == false ? 'cjpeg or the macOS sRGB ICC profile is unavailable on this host.' : false,
+      skip: canRunMetadataTests == false ? 'cjpeg or the system sRGB ICC profile is unavailable on this host.' : false,
     );
 
     test(
@@ -295,7 +298,7 @@ void main() {
 
         expect(_iccProfileFromJpeg(await outputFile.readAsBytes()), orderedEquals(iccProfileBytes));
       },
-      skip: canRunMetadataTests == false ? 'cjpeg or the macOS sRGB ICC profile is unavailable on this host.' : false,
+      skip: canRunMetadataTests == false ? 'cjpeg or the system sRGB ICC profile is unavailable on this host.' : false,
     );
 
     test(
@@ -321,7 +324,7 @@ void main() {
 
         expect(_iccProfileFromJpeg(await outputFile.readAsBytes()), orderedEquals(iccProfileBytes));
       },
-      skip: canRunMetadataTests == false ? 'cjpeg or the macOS sRGB ICC profile is unavailable on this host.' : false,
+      skip: canRunMetadataTests == false ? 'cjpeg or the system sRGB ICC profile is unavailable on this host.' : false,
     );
 
     test(

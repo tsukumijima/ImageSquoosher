@@ -31,7 +31,7 @@ void main() {
     'Desktop の実画像変換と設定・通知・補助メニューを撮影して検証する',
     (tester) async {
       final workspace = await Directory.systemTemp.createTemp('image-squoosher-ui-review-');
-      final screenshots = Directory('/tmp/image-squoosher-qa');
+      final screenshots = Directory('${Directory.systemTemp.path}/image-squoosher-qa');
       await screenshots.create(recursive: true);
       final controller = SquoosherController();
       final captureKey = GlobalKey();
@@ -88,6 +88,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      debugPrint('UI display: ${tester.view.physicalSize}, scale ${tester.view.devicePixelRatio}.');
       await _capture(tester, captureKey, screenshots, 'ui-empty');
 
       // 実ファイルを通常のコントローラーへ投入し、ヘッダー解析とサムネイル表示を待つ

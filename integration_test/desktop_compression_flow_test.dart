@@ -136,7 +136,7 @@ void main() {
 
     final firstOutput = File('${temporaryDirectory.path}${Platform.pathSeparator}first_e2e.jpg');
     final secondOutput = File('${temporaryDirectory.path}${Platform.pathSeparator}second_e2e.jpg');
-    expect(find.text('2件の画像を変換しました。1件の画像でエラーが発生したため、一覧をご確認ください。'), findsOneWidget);
+    expect(find.text('2件の画像を変換しました。\n1件の画像でエラーが発生したため、一覧をご確認ください。'), findsOneWidget);
     // 画面外の行は必要になった時点で描画されるため、結果一覧までスクロールして確認する
     await tester.scrollUntilVisible(
       find.byKey(ValueKey(brokenInput.path)),

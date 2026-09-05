@@ -36,6 +36,9 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
           fileDatesChannel,
           (call) async {
+            if (call.method == 'replaceStagedOutputAtomically') {
+              return _performFileOperation(call);
+            }
             expect(call.method, 'copySourceFileDatesToOutputFile');
             final arguments = call.arguments! as Map<Object?, Object?>;
             final sourceFile = File(arguments['sourcePath']! as String);
@@ -121,7 +124,7 @@ void main() {
         const fileDatesChannel = MethodChannel('net.tsukumijima.image-squoosher/finder_sync');
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
           fileDatesChannel,
-          (_) async => null,
+          _performFileOperation,
         );
         addTearDown(
           () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -183,7 +186,7 @@ void main() {
         const fileDatesChannel = MethodChannel('net.tsukumijima.image-squoosher/finder_sync');
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
           fileDatesChannel,
-          (_) async => null,
+          _performFileOperation,
         );
         addTearDown(
           () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -592,6 +595,24 @@ void main() {
       );
     });
   });
+}
+
+/// ネイティブチャネルを持たない単体テストで、日時反映と一時出力の公開を実行する。
+/// @param call 検証対象のファイル操作
+/// @returns 操作完了を示す null
+Future<Object?> _performFileOperation(MethodCall call) async {
+  final arguments = call.arguments! as Map<Object?, Object?>;
+  switch (call.method) {
+    case 'copySourceFileDatesToOutputFile':
+      final source = File(arguments['sourcePath']! as String);
+      await File(arguments['outputPath']! as String).setLastModified(await source.lastModified());
+    case 'replaceStagedOutputAtomically':
+      // 成功応答だけ返すと空の予約ファイルが残るため、ファイルの移動まで反映する
+      await File(arguments['stagedOutputPath']! as String).rename(arguments['outputPath']! as String);
+    default:
+      throw StateError('Unexpected file operation: ${call.method}.');
+  }
+  return null;
 }
 
 /// キュー追加後の非同期詳細読み込みが完了するまで待機する。

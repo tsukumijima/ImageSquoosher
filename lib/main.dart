@@ -33,7 +33,7 @@ Future<void> main() async {
     size: Size(windowSettings.width, windowSettings.height),
     minimumSize: const Size(windowMinWidth, windowMinHeight),
     center: false,
-    title: '',
+    title: Platform.isWindows ? 'ImageSquoosher' : '',
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.normal,

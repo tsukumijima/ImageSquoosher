@@ -8,6 +8,7 @@ import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as image;
+import 'package:path/path.dart' as p;
 
 import '../models/conversion_settings.dart';
 import '../models/image_dimensions.dart';
@@ -77,7 +78,7 @@ class QueuedImage {
 
   /// パスからファイル名を取得する。
   /// @returns 入力画像のファイル名
-  String get fileName => path.split(Platform.pathSeparator).last;
+  String get fileName => p.basename(path);
 
   /// 指定した読み取り結果や変換状態を反映した行を返す。
   /// @param byteLength 更新する入力画像のファイルサイズ

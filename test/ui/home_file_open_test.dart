@@ -84,6 +84,17 @@ void main() {
       ),
     );
     await tester.pump();
+    // プレビューの実ファイル読み込みが完了してから、削除を含む操作へ進む
+    final previews = find.byType(Image).evaluate().toList();
+    var hasLoaded = false;
+    Future.wait(
+      previews.map((element) => precacheImage((element.widget as Image).image, element)),
+    ).then((_) => hasLoaded = true);
+    // 実 I/O のイベントとテスト時計の継続処理を両方進め、読み込み完了まで待つ
+    while (!hasLoaded) {
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+    }
     final row = tester.widget<QueuedImageRow>(find.byType(QueuedImageRow));
     await tester.runAsync(() async {
       row.onOpenSourceFile();
@@ -111,5 +122,6 @@ void main() {
     expect(launchedURLs, isEmpty);
     expect(output.existsSync(), isTrue);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }
