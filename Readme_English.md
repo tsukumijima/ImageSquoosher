@@ -1,7 +1,7 @@
 # ImageSquoosher
 
-> [!TIP]
-> **日本語版は [README_Japanese.md](README_Japanese.md) を参照してください。**
+> [!TIP]  
+> **🇯🇵 日本語版 README はこちら: [Readme.md](Readme.md)**
 
 ImageSquoosher is a desktop app for converting still images to compact JPEG files. It can center-crop, resize, remove metadata, and compress multiple JPEG, PNG, and WebP images with MozJPEG in one pass.
 

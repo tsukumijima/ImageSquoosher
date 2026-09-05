@@ -1,7 +1,7 @@
 # ImageSquoosher
 
-> [!TIP]
-> **英語版は [README.md](README.md) を参照してください。**
+> [!TIP]  
+> **🌐 English version is available: [Readme_English.md](Readme_English.md)**
 
 ImageSquoosher は、静止画を容量の小さい JPEG へ変換するデスクトップアプリです。  
 複数の JPEG・PNG・WebP 画像に対して、中央クロップ、リサイズ、メタデータ削除、MozJPEG による圧縮をまとめて行えます。
