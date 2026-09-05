@@ -27,6 +27,7 @@ class MozJpegEncoder {
     required File outputFile,
     required Directory temporaryDirectory,
     Uint8List? iccProfileBytes,
+    void Function(double progress)? onProgress,
   }) async {
     if (rgbBytes.lengthInBytes != width * height * 3) {
       throw ArgumentError.value(
@@ -47,6 +48,7 @@ class MozJpegEncoder {
     await _writePpm(ppmFile, width, height, rgbBytes);
 
     final arguments = <String>[
+      '-report',
       '-quality',
       quality.toString(),
       '-progressive',
@@ -68,10 +70,34 @@ class MozJpegEncoder {
     } on ProcessException catch (error) {
       throw MozJpegEncodingException('Failed to start cjpeg: ${error.message}.');
     }
-    final standardError = process.stderr.transform(utf8.decoder).join();
+    // 改行でなく復帰文字で更新される進捗を分割し、診断メッセージだけを失敗理由として保持する
+    final errorMessages = StringBuffer();
+    final progressPattern = RegExp(r'^Pass\s+(\d+)/(\d+):\s*(\d+)%$');
+    final singlePassPattern = RegExp(r'^(\d+)%$');
+    var lastProgress = 0.0;
+    final standardError = process.stderr.transform(utf8.decoder).transform(const LineSplitter()).forEach((line) {
+      final message = line.trim();
+      final match = progressPattern.firstMatch(message);
+      final singlePassMatch = singlePassPattern.firstMatch(message);
+      if (match != null || singlePassMatch != null) {
+        final progress = match != null
+            ? (int.parse(match[1]!) - 1 + int.parse(match[3]!) / 100) / int.parse(match[2]!)
+            : int.parse(singlePassMatch![1]!) / 100;
+        // MozJPEG は総パス数を途中で更新するため、表示済みの進捗を下限として扱う
+        if (progress > lastProgress) {
+          lastProgress = progress.clamp(0.0, 1.0);
+          onProgress?.call(lastProgress);
+        }
+      } else if (message.isNotEmpty) {
+        errorMessages.writeln(message);
+      }
+    });
+    final standardOutput = process.stdout.drain<void>();
 
     final exitCode = await process.exitCode;
-    final errorOutput = (await standardError).trim();
+    await standardError;
+    await standardOutput;
+    final errorOutput = errorMessages.toString().trim();
     if (exitCode != 0) {
       throw MozJpegEncodingException(
         'cjpeg exited with code $exitCode.${errorOutput.isEmpty ? '' : '\n$errorOutput'}',
@@ -80,6 +106,7 @@ class MozJpegEncoder {
     if (await outputFile.exists() == false || await outputFile.length() == 0) {
       throw const MozJpegEncodingException('cjpeg completed without producing JPEG data.');
     }
+    onProgress?.call(1.0);
   }
 
   /// PPM P6 は RGB バイト列を加工せず `cjpeg` へ渡せる最小の中間形式です。

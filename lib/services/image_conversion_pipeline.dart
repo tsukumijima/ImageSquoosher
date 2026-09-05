@@ -29,11 +29,11 @@ class ImageConversionPipeline {
 
   /// 1枚を JPEG へ変換します。
   Future<ImageConversionResult> convert(ImageConversionRequest request) async {
+    request.onProgress?.call(0.0);
     final inputPath = request.inputFile.path;
     final settings = request.settings;
-    final prepared = await Isolate.run(
-      () => _prepareImage(inputPath, settings),
-    );
+    final prepared = await _prepareImageInIsolate(inputPath, settings);
+    request.onProgress?.call(0.1);
     final sourceFormat = prepared.sourceFormat;
     final plan = prepared.plan;
     if (request.settings.overwrite &&
@@ -59,9 +59,11 @@ class ImageConversionPipeline {
               width: plan.output.width,
               height: plan.output.height,
             );
-      rgbBytes = resized.toSrgbBytes();
+      // 全画素の色変換もワーカーへ渡し、大きな出力画像でも画面を操作できる状態を保つ
+      rgbBytes = await Isolate.run(resized.toSrgbBytes);
     }
 
+    request.onProgress?.call(0.2);
     final sourceStat = await request.inputFile.stat();
     final outputParent = request.outputFile.parent;
     await outputParent.create(recursive: true);
@@ -79,6 +81,7 @@ class ImageConversionPipeline {
         outputFile: stagedOutput,
         temporaryDirectory: temporaryDirectory,
         iccProfileBytes: prepared.iccProfileBytes,
+        onProgress: (progress) => request.onProgress?.call(0.2 + progress * 0.7),
       );
 
       // cjpeg の JPEG を一度デコードし、検証済みの出力だけを公開する
@@ -87,7 +90,8 @@ class ImageConversionPipeline {
         outputBytes = ImageMetadataTransfer.inject(outputBytes, prepared.metadataSegments);
         await stagedOutput.writeAsBytes(outputBytes, flush: true);
       }
-      _verifyJpeg(outputBytes, plan.output.width, plan.output.height);
+      await _verifyJpegInIsolate(outputBytes, plan.output.width, plan.output.height);
+      request.onProgress?.call(0.95);
 
       final finalizeStagedOutput = request.finalizeStagedOutput;
       if (finalizeStagedOutput == null) {
@@ -123,6 +127,7 @@ class ImageConversionPipeline {
       }
     }
 
+    request.onProgress?.call(1.0);
     return ImageConversionResult(
       inputFile: request.inputFile,
       outputFile: request.outputFile,
@@ -133,6 +138,11 @@ class ImageConversionPipeline {
       outputWidth: plan.output.width,
       outputHeight: plan.output.height,
     );
+  }
+
+  /// 画面のコールバックをワーカーへ取り込まないよう、入力パスと設定だけを渡します。
+  static Future<_PreparedImage> _prepareImageInIsolate(String inputPath, ConversionSettings settings) {
+    return Isolate.run(() => _prepareImage(inputPath, settings));
   }
 
   /// デコード、向き補正、中央クロップをワーカー [Isolate] でまとめて実行します。
@@ -286,6 +296,11 @@ class ImageConversionPipeline {
       height: cropRect.height,
       linearRgb: linearRgb,
     );
+  }
+
+  /// 出力 JPEG の全画素デコードをワーカーへ渡し、検証中も画面の応答を保ちます。
+  static Future<void> _verifyJpegInIsolate(Uint8List jpegBytes, int width, int height) {
+    return Isolate.run(() => _verifyJpeg(jpegBytes, width, height));
   }
 
   /// 生成結果が要求解像度の JPEG かを確認します。

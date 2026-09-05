@@ -28,6 +28,7 @@ class ImageConversionRequest {
     required this.cjpegExecutable,
     required this.settings,
     this.finalizeStagedOutput,
+    this.onProgress,
   });
 
   /// デコードする画像ファイルです。
@@ -41,6 +42,11 @@ class ImageConversionRequest {
 
   /// 切り出し、リサイズ、画質、メタデータを決める唯一の変換設定です。
   final ConversionSettings settings;
+
+  /// 準備、圧縮、検証、保存の工程進捗を 0.0 から 1.0 で通知します。
+  ///
+  /// 経過時間の割合ではなく、1.0 は出力の公開まで成功したことを表します。
+  final void Function(double progress)? onProgress;
 
   /// 検証済み JPEG を公開する直前に、日時などのファイル属性を反映します。
   ///
