@@ -26,6 +26,7 @@ void main() {
       QueuedImageStatus.processing,
       QueuedImageStatus.completed,
       QueuedImageStatus.failed,
+      QueuedImageStatus.stopped,
     ]) {
       final isCompleted = status == QueuedImageStatus.completed;
       await tester.pumpWidget(
@@ -65,9 +66,21 @@ void main() {
       expect(find.byType(IconButton), findsNWidgets(3));
       final progress = tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator));
       expect(progress.value, isCompleted ? 1 : 0.45);
+      final statusBadge = find.byKey(const ValueKey('image-status-badge'));
+      final statusIcon = switch (status) {
+        QueuedImageStatus.queued => Icons.schedule,
+        QueuedImageStatus.processing => Icons.sync,
+        QueuedImageStatus.completed => Icons.check_circle,
+        QueuedImageStatus.failed => Icons.error,
+        QueuedImageStatus.stopped => Icons.stop_circle,
+      };
+      expect(find.descendant(of: statusBadge, matching: find.byIcon(statusIcon)), findsOneWidget);
+      expect(tester.getSize(statusBadge).height, lessThanOrEqualTo(24));
       if (isCompleted) {
         expect(find.text(' (2.0MB / 75% 圧縮!)'), findsOneWidget);
         expect(progress.color, AppColors.success);
+        final decoration = tester.widget<Container>(statusBadge).decoration! as BoxDecoration;
+        expect(decoration.color, const Color(0xff4caf50));
       }
       if (status != QueuedImageStatus.failed) {
         expect(find.text('6192×4128 (3:2) → 1920×1280 (3:2)'), findsOneWidget);

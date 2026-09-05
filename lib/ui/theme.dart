@@ -6,9 +6,9 @@ import 'package:flutter/cupertino.dart';
 
 /// 操作のアクセント色と独立した、結果の意味を伝える色です。
 abstract final class AppColors {
-  static const success = Color(0xffcbf56c);
+  static const success = Color(0xff4caf50);
   static const error = Color(0xffff5252);
-  static const info = Color(0xff64b5f6);
+  static const info = Color(0xff2196f3);
 }
 
 /// OS のアクセント色と α Import Utility のタイポグラフィを使うテーマを作成する。

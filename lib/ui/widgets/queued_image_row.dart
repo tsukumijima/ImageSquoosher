@@ -53,6 +53,37 @@ class QueuedImageRow extends StatelessWidget {
     };
   }
 
+  /// 色とアイコンを併用し、待機から完了まで同じ位置で状態を識別できるようにします。
+  Widget _buildStatusBadge(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isNeutral = queuedImage.status == QueuedImageStatus.queued || queuedImage.status == QueuedImageStatus.stopped;
+    final backgroundColor = isNeutral ? colorScheme.surfaceContainerHighest : _statusColor(colorScheme);
+    final foregroundColor = isNeutral ? colorScheme.onSurfaceVariant : Colors.white;
+    final icon = switch (queuedImage.status) {
+      QueuedImageStatus.queued => Icons.schedule,
+      QueuedImageStatus.processing => Icons.sync,
+      QueuedImageStatus.completed => Icons.check_circle,
+      QueuedImageStatus.failed => Icons.error,
+      QueuedImageStatus.stopped => Icons.stop_circle,
+    };
+    return Container(
+      key: const ValueKey('image-status-badge'),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(color: backgroundColor, borderRadius: BorderRadius.circular(10)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: foregroundColor, size: 12),
+          const SizedBox(width: 3),
+          Text(
+            _statusText(AppLocalizations.of(context)),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: foregroundColor, height: 1.2),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 代表的な比率と、最大公約数で約分した任意比率を短く表示します。
   String _aspectRatioText(ImageDimensions dimensions) {
     // 代表的な比率では、リサイズ後の端数を短い表記へ戻す
@@ -187,7 +218,6 @@ class QueuedImageRow extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final statusColor = _statusColor(colorScheme);
     final isCompleted = queuedImage.status == QueuedImageStatus.completed;
     final hasFailed = queuedImage.status == QueuedImageStatus.failed;
     final inputText = '${queuedImage.fileName} (${_formatBytes(queuedImage.byteLength, l10n)})';
@@ -264,10 +294,7 @@ class QueuedImageRow extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                Text(
-                                  _statusText(l10n),
-                                  style: theme.textTheme.labelSmall?.copyWith(color: statusColor),
-                                ),
+                                _buildStatusBadge(context),
                                 const SizedBox(width: 6),
                                 IconButton(
                                   onPressed: isCompleted ? onOpenFile : null,

@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../theme.dart';
 
 /// 通知の意味に応じた表示種別です。
 enum AppNoticeKind { info, success, error }
@@ -11,9 +12,9 @@ enum AppNoticeKind { info, success, error }
 /// 新しい操作結果を優先して表示し、短い間隔の操作でも通知を読み取れるようにします。
 void showAppSnackBar(BuildContext context, String message, {AppNoticeKind kind = AppNoticeKind.info}) {
   final color = switch (kind) {
-    AppNoticeKind.info => const Color(0xff2196f3),
-    AppNoticeKind.success => const Color(0xff4caf50),
-    AppNoticeKind.error => const Color(0xffff5252),
+    AppNoticeKind.info => AppColors.info,
+    AppNoticeKind.success => AppColors.success,
+    AppNoticeKind.error => AppColors.error,
   };
   final icon = switch (kind) {
     AppNoticeKind.info => Icons.info,
