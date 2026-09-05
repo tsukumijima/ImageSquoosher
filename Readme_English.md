@@ -170,6 +170,8 @@ flutter build windows --release
 pwsh -File tools/bundle_mozjpeg.ps1
 ```
 
+`bundle_mozjpeg.ps1` copies `cjpeg.exe`, the MozJPEG licenses, and the three required VC++ runtime DLLs into the Release folder. Distribute the entire folder as a ZIP file.
+
 GitHub Actions runs format, analyze, and test first. It then builds macOS arm64 and Windows x64, performs a real conversion with each bundled `cjpeg`, includes the VC++ runtime DLLs in the Windows artifact, and stores both ZIP files.
 
 Tags must use `vX.Y.Z` and match the version in `pubspec.yaml`. A tag release publishes exactly:

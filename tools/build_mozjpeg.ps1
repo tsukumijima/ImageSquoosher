@@ -9,6 +9,16 @@ $workDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("image-squoosher-m
 
 try {
     $cmakeCommand = Get-Command cmake -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    # Visual Studio の標準インストールでは CMake が PATH に入らないため、同梱版も解決する
+    if ($null -eq $cmakeCommand) {
+        $vswherePath = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+        if (Test-Path -LiteralPath $vswherePath) {
+            $cmakePath = & $vswherePath -latest -products '*' -find 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe' | Select-Object -First 1
+            if ($cmakePath) {
+                $cmakeCommand = Get-Command $cmakePath -CommandType Application
+            }
+        }
+    }
     if ($null -eq $cmakeCommand) {
         throw 'Required command is missing: cmake.'
     }

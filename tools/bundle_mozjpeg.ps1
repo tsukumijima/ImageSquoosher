@@ -21,6 +21,27 @@ if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
 New-Item -ItemType Directory -Force -Path $destinationDirectory | Out-Null
 Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force
 
+# 配布先だけで実行できるよう、エンコーダーのライセンスと MSVC ランタイムを一緒に配置する
+foreach ($licenseName in @('LICENSE.md', 'README.ijg', 'LICENSE-zlib.txt')) {
+    Copy-Item -LiteralPath (Join-Path $projectRoot "native/mozjpeg/$licenseName") -Destination $destinationDirectory -Force
+}
+$vswherePath = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+if (-not (Test-Path -LiteralPath $vswherePath -PathType Leaf)) {
+    throw 'Visual Studio Installer vswhere.exe was not found.'
+}
+foreach ($runtimeName in @('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll')) {
+    $runtimePaths = @(& $vswherePath -latest -products '*' -find "VC/Redist/MSVC/*/x64/*/$runtimeName")
+    if ($runtimePaths.Count -eq 0) {
+        throw "VC++ runtime DLL was not found: $runtimeName."
+    }
+    # 複数世代のツールセットがある環境でも、古い DLL を同梱して起動時にクラッシュさせない
+    $runtimePath = $runtimePaths | Sort-Object -Property {
+        $runtimeVersion = (Get-Item -LiteralPath $_).VersionInfo
+        [version]::new($runtimeVersion.FileMajorPart, $runtimeVersion.FileMinorPart, $runtimeVersion.FileBuildPart, $runtimeVersion.FilePrivatePart)
+    } -Descending | Select-Object -First 1
+    Copy-Item -LiteralPath $runtimePath -Destination $AppPath -Force
+}
+
 if (-not (Test-Path -LiteralPath $destinationPath -PathType Leaf)) {
     throw "Bundled cjpeg was not created: $destinationPath."
 }

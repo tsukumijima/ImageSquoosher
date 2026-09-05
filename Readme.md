@@ -208,6 +208,9 @@ flutter build windows --release
 pwsh -File tools/bundle_mozjpeg.ps1
 ```
 
+`bundle_mozjpeg.ps1` は `cjpeg.exe`、MozJPEG のライセンス、必要な3個の VC++ ランタイム DLL を Release フォルダへ配置します。  
+配布時はこのフォルダ全体を ZIP にまとめてください。
+
 GitHub Actions は format、analyze、test を先に実行します。  
 その後で macOS arm64 と Windows x64 をビルドし、各アプリへ配置した `cjpeg` による実変換を確認します。  
 Windows の成果物には VC++ ランタイム DLL も含め、両 OS の ZIP を保存します。

@@ -149,22 +149,6 @@ jobs:
         shell: pwsh
         run: ./tools/bundle_mozjpeg.ps1
 
-      - name: Copy VC++ runtime DLLs
-        shell: pwsh
-        run: |
-          $runtimeNames = @(
-            'msvcp140.dll',
-            'vcruntime140.dll',
-            'vcruntime140_1.dll'
-          )
-          foreach ($runtimeName in $runtimeNames) {
-            $matches = @(vswhere -latest -find "VC\Redist\MSVC\*\x64\*\$runtimeName")
-            if ($matches.Count -eq 0) {
-              throw "VC++ runtime DLL was not found: $runtimeName."
-            }
-            Copy-Item -LiteralPath $matches[0] -Destination '${{ env.WINDOWS_RELEASE_PATH }}' -Force
-          }
-
       - name: Test bundled MozJPEG conversion
         shell: pwsh
         run: |
@@ -177,6 +161,9 @@ jobs:
           $requiredPaths = @(
             '${{ env.WINDOWS_RELEASE_PATH }}/ImageSquoosher.exe',
             '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/cjpeg.exe',
+            '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/LICENSE.md',
+            '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/README.ijg',
+            '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/LICENSE-zlib.txt',
             '${{ env.WINDOWS_RELEASE_PATH }}/msvcp140.dll',
             '${{ env.WINDOWS_RELEASE_PATH }}/vcruntime140.dll',
             '${{ env.WINDOWS_RELEASE_PATH }}/vcruntime140_1.dll'
