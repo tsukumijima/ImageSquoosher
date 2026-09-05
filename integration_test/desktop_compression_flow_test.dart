@@ -141,7 +141,10 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(ValueKey(brokenInput.path)),
       150,
-      scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('image-queue-list')),
+        matching: find.byType(Scrollable),
+      ),
     );
     await tester.pumpAndSettle();
     expect(find.text('失敗'), findsOneWidget);
@@ -164,11 +167,7 @@ void main() {
     controller.clear();
     controller.addFiles(<String>[overwriteInput.path]);
     await _waitFor(tester, () => controller.images.single.sourceDimensions != null);
-    await tester.scrollUntilVisible(
-      find.text('元のファイルを上書きする'),
-      -150,
-      scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
-    );
+    // 設定は一覧のスクロール位置にかかわらず画面内で操作できる
     await tester.tap(find.text('元のファイルを上書きする'));
     await tester.pump();
     await tester.ensureVisible(find.text('変換開始'));
@@ -192,7 +191,10 @@ void main() {
     await tester.scrollUntilVisible(
       completedRow,
       150,
-      scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('image-queue-list')),
+        matching: find.byType(Scrollable),
+      ),
     );
     await tester.pumpAndSettle();
     expect(find.descendant(of: completedRow, matching: find.text('完了')), findsOneWidget);

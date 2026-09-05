@@ -11,11 +11,15 @@ import 'package:image_squoosher/services/squoosher_controller.dart';
 import 'package:image_squoosher/ui/home_screen.dart';
 import 'package:image_squoosher/ui/theme.dart';
 import 'package:image_squoosher/ui/widgets/compression_footer.dart';
+import 'package:image_squoosher/ui/widgets/conversion_settings_panel.dart';
+import 'package:image_squoosher/ui/widgets/queue_header.dart';
 import 'package:image_squoosher/ui/widgets/queued_image_row.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
   const definedImageDirectory = String.fromEnvironment('IMAGE_SQUOOSHER_QA_IMAGE_DIR');
   final imageDirectory = Directory(
     definedImageDirectory.isNotEmpty
@@ -31,6 +35,13 @@ void main() {
       await screenshots.create(recursive: true);
       final controller = SquoosherController();
       final captureKey = GlobalKey();
+      await windowManager.ensureInitialized();
+      await windowManager.setSize(const Size(620, 680));
+      // 他のウィンドウで隠れたときも描画が続くよう、撮影中はテスト画面を最前面へ置く
+      await windowManager.setAlwaysOnTop(true);
+      addTearDown(() => windowManager.setAlwaysOnTop(false));
+      await windowManager.show();
+      await windowManager.focus();
       var locale = const Locale('ja');
       addTearDown(controller.dispose);
       addTearDown(() => workspace.delete(recursive: true));
@@ -87,6 +98,22 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await _capture(tester, captureKey, screenshots, 'ui-loaded');
 
+      // 画像一覧を末尾まで動かしても、変換設定と一覧の見出しを見失わないことを確認する
+      final settingsBounds = tester.getRect(find.byType(ConversionSettingsPanel));
+      final queueHeaderBounds = tester.getRect(find.byType(QueueHeader));
+      final queueScrollable = find.descendant(
+        of: find.byKey(const ValueKey('image-queue-list')),
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(find.byKey(ValueKey(inputPaths.last)), 150, scrollable: queueScrollable);
+      await tester.pumpAndSettle();
+      expect(tester.getRect(find.byType(ConversionSettingsPanel)), settingsBounds);
+      expect(tester.getRect(find.byType(QueueHeader)), queueHeaderBounds);
+      expect(tester.state<ScrollableState>(queueScrollable).position.pixels, greaterThan(0));
+      await _capture(tester, captureKey, screenshots, 'ui-scrolled');
+      await tester.scrollUntilVisible(find.byKey(ValueKey(inputPaths.first)), -150, scrollable: queueScrollable);
+      await tester.pumpAndSettle();
+
       final firstRow = find.byType(QueuedImageRow).first;
       final initialRowHeight = tester.getSize(firstRow).height;
       await tester.tap(find.byKey(const ValueKey('aspect-ratio-select')));
@@ -125,6 +152,7 @@ void main() {
       );
       expect(footerProgress.value, 1);
       expect(find.byType(SnackBar), findsOneWidget);
+      expect(tester.widget<SnackBar>(find.byType(SnackBar)).backgroundColor, footerProgress.color);
       expect(
         find.text(AppLocalizations.of(tester.element(firstRow)).conversionSucceeded(inputPaths.length)),
         findsOneWidget,
@@ -158,6 +186,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(locale.languageCode, 'en');
       await _capture(tester, captureKey, screenshots, 'ui-english');
+      await windowManager.setSize(const Size(520, 560));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await _capture(tester, captureKey, screenshots, 'ui-minimum-english');
+      await windowManager.setSize(const Size(620, 680));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
@@ -200,12 +234,19 @@ void main() {
       await tester.scrollUntilVisible(
         failedRow,
         150,
-        scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('image-queue-list')),
+          matching: find.byType(Scrollable),
+        ),
       );
       await tester.pump(const Duration(milliseconds: 300));
-      final failureLabel = tester.widget<Text>(find.descendant(of: failedRow, matching: find.text('Failed')));
-      expect(failureLabel.style?.color, AppColors.error);
+      final failureBadge = tester.widget<Container>(
+        find.descendant(of: failedRow, matching: find.byKey(const ValueKey('image-status-badge'))),
+      );
+      expect((failureBadge.decoration! as BoxDecoration).color, AppColors.error);
       expect(await brokenInput.exists(), isTrue);
+      ScaffoldMessenger.of(tester.element(failedRow)).clearSnackBars();
+      await tester.pumpAndSettle();
       await _capture(tester, captureKey, screenshots, 'ui-failed');
       expect(tester.takeException(), isNull);
     },
@@ -231,14 +272,7 @@ Future<void> _capture(WidgetTester tester, GlobalKey key, Directory directory, S
   await tester.pump().timeout(const Duration(seconds: 10));
   final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   debugPrint('UI capture $stage: reading rendered image.');
-  final capture = boundary.toImage(pixelRatio: 2).timeout(const Duration(seconds: 10));
-  var hasCaptured = false;
-  capture.then((_) => hasCaptured = true, onError: (Object error) => hasCaptured = true);
-  // GPU の読み戻しを待つ間もフレームを送り、Desktop の描画処理を進める
-  while (!hasCaptured) {
-    await tester.pump(const Duration(milliseconds: 16)).timeout(const Duration(seconds: 10));
-  }
-  final rendered = await capture;
+  final rendered = await boundary.toImage(pixelRatio: 2).timeout(const Duration(seconds: 10));
   debugPrint('UI capture $stage: encoding PNG.');
   final bytes = await rendered.toByteData(format: ui.ImageByteFormat.png).timeout(const Duration(seconds: 10));
   debugPrint('UI capture $stage: writing PNG.');

@@ -60,6 +60,7 @@ class HomeScreenState extends State<HomeScreen> {
   static const _finderMethodChannel = MethodChannel('net.tsukumijima.image-squoosher/finder_sync');
 
   late final SquoosherController _controller;
+  final ScrollController _queueScrollController = ScrollController();
   final UpdateCheckService _updateCheckService = UpdateCheckService.instance;
   late AppPreferences _preferences;
   UpdateCheckResult? _updateResult;
@@ -88,6 +89,7 @@ class HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _finderMethodChannel.setMethodCallHandler(null);
     _saveTimer?.cancel();
+    _queueScrollController.dispose();
     _controller.removeListener(_refresh);
     if (widget.controller == null) {
       _controller.dispose();
@@ -517,6 +519,7 @@ class HomeScreenState extends State<HomeScreen> {
               isCompressing: _controller.isCompressing,
               isFinderSyncEnabled: _isFinderSyncEnabled,
               isFinderIntegrationAvailable: Platform.isMacOS,
+              onAddFiles: _addFiles,
               onFinderSettings: _openFinderSettings,
               onMenuAction: _handleMenuAction,
             ),
@@ -525,70 +528,62 @@ class HomeScreenState extends State<HomeScreen> {
                 result: _updateResult!,
                 onDismiss: () => setState(() => _showUpdateBanner = false),
               ),
-            // 小さいウィンドウでも各設定と結果へ到達できるよう、中央部分を一続きにスクロールする
-            Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: ExcludeFocus(
-                      excluding: _controller.isCompressing,
-                      child: AbsorbPointer(
-                        absorbing: _controller.isCompressing,
-                        child: Opacity(
-                          opacity: _controller.isCompressing ? 0.5 : 1,
-                          child: ConversionSettingsPanel(
-                            settings: _preferences.conversionSettings,
-                            onChanged: (settings) {
-                              _savePreferences(_preferences.copyWith(conversionSettings: settings));
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
+            // 変換条件を常に見ながら各画像を確認できるよう、設定と一覧見出しを固定する
+            ExcludeFocus(
+              excluding: _controller.isCompressing,
+              child: AbsorbPointer(
+                absorbing: _controller.isCompressing,
+                child: Opacity(
+                  opacity: _controller.isCompressing ? 0.5 : 1,
+                  child: ConversionSettingsPanel(
+                    settings: _preferences.conversionSettings,
+                    onChanged: (settings) {
+                      _savePreferences(_preferences.copyWith(conversionSettings: settings));
+                    },
                   ),
-                  SliverToBoxAdapter(
-                    child: QueueHeader(
-                      canAdd: !_controller.isCompressing,
-                      onAddFiles: _addFiles,
-                      imageCount: _controller.images.length,
-                      canClear: _controller.images.isNotEmpty && _controller.isCompressing == false,
-                      onClear: _clearFiles,
-                    ),
-                  ),
-                  if (_controller.images.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 120),
-                        child: EmptyDropArea(
-                          isDropActive: _isDropActive,
-                          isEnabled: _controller.isCompressing == false,
-                          onAddFiles: _addFiles,
-                        ),
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                      sliver: SliverList.separated(
-                        itemCount: _controller.images.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 6),
-                        itemBuilder: (context, index) {
-                          final queuedImage = _controller.images[index];
-                          return QueuedImageRow(
-                            key: ValueKey(queuedImage.path),
-                            queuedImage: queuedImage,
-                            settings: _preferences.conversionSettings,
-                            canRemove: _controller.isCompressing == false,
-                            onOpenFile: () => _openOutputFile(queuedImage),
-                            onOpenFolder: () => _openOutputFolder(queuedImage),
-                            onRemove: () => _controller.removeFile(queuedImage.path),
-                          );
-                        },
-                      ),
-                    ),
-                ],
+                ),
               ),
+            ),
+            QueueHeader(
+              imageCount: _controller.images.length,
+              canClear: _controller.images.isNotEmpty && _controller.isCompressing == false,
+              onClear: _clearFiles,
+            ),
+            Expanded(
+              child: _controller.images.isEmpty
+                  ? EmptyDropArea(
+                      isDropActive: _isDropActive,
+                      isEnabled: _controller.isCompressing == false,
+                      onAddFiles: _addFiles,
+                    )
+                  : ScrollConfiguration(
+                      // デスクトップの自動スクロールバーと重複させず、一覧内の操作領域を明示する
+                      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                      child: Scrollbar(
+                        key: const ValueKey('image-queue-scrollbar'),
+                        controller: _queueScrollController,
+                        thumbVisibility: true,
+                        child: ListView.separated(
+                          key: const ValueKey('image-queue-list'),
+                          controller: _queueScrollController,
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                          itemCount: _controller.images.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 6),
+                          itemBuilder: (context, index) {
+                            final queuedImage = _controller.images[index];
+                            return QueuedImageRow(
+                              key: ValueKey(queuedImage.path),
+                              queuedImage: queuedImage,
+                              settings: _preferences.conversionSettings,
+                              canRemove: _controller.isCompressing == false,
+                              onOpenFile: () => _openOutputFile(queuedImage),
+                              onOpenFolder: () => _openOutputFolder(queuedImage),
+                              onRemove: () => _controller.removeFile(queuedImage.path),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
             ),
           ],
         ),

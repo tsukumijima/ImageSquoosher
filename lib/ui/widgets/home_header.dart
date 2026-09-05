@@ -15,6 +15,7 @@ class HomeHeader extends StatelessWidget {
     required this.isCompressing,
     required this.isFinderSyncEnabled,
     required this.isFinderIntegrationAvailable,
+    required this.onAddFiles,
     required this.onFinderSettings,
     required this.onMenuAction,
   });
@@ -22,6 +23,7 @@ class HomeHeader extends StatelessWidget {
   final bool isCompressing;
   final bool isFinderSyncEnabled;
   final bool isFinderIntegrationAvailable;
+  final VoidCallback onAddFiles;
   final VoidCallback onFinderSettings;
   final ValueChanged<HomeMenuAction> onMenuAction;
 
@@ -54,6 +56,23 @@ class HomeHeader extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
+          const SizedBox(width: 8),
+          // 追加と解除は中立色でそろえ、変換開始のアクセント色を主要操作として保つ
+          FilledButton.tonalIcon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+              iconColor: Theme.of(context).colorScheme.onSurface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              minimumSize: const Size(0, 32),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+            onPressed: isCompressing ? null : onAddFiles,
+            icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+            label: Text(l10n.addFiles, maxLines: 1),
+          ),
+          const SizedBox(width: 4),
           if (isFinderIntegrationAvailable)
             SizedBox(
               width: 40,

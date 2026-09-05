@@ -17,6 +17,7 @@ import 'package:image_squoosher/ui/theme.dart';
 import 'package:image_squoosher/ui/widgets/compression_footer.dart';
 import 'package:image_squoosher/ui/widgets/conversion_settings_panel.dart';
 import 'package:image_squoosher/ui/widgets/queued_image_row.dart';
+import 'package:image_squoosher/ui/widgets/queue_header.dart';
 
 /// 実ファイルの読み取りを待たず、指定した画像状態を画面へ提供するコントローラーです。
 class _LayoutTestController extends SquoosherController {
@@ -181,9 +182,9 @@ Future<void> _pumpHomeScreen(
 }
 
 /// 一覧へ表示する通常状態の画像を、実ファイルへ依存しない値で作ります。
-List<QueuedImage> _normalImages() {
+List<QueuedImage> _normalImages({int count = 3}) {
   return List.generate(
-    3,
+    count,
     (index) => QueuedImage(
       path: '/missing/landscape-$index.jpg',
       byteLength: 104192,
@@ -277,13 +278,28 @@ void main() {
     }
 
     for (final size in const [Size(620, 680), Size(520, 560)]) {
-      testWidgets('${size.width}x${size.height} keeps all image rows reachable by scrolling', (tester) async {
-        await _pumpHomeScreen(tester, size: size, locale: const Locale('ja'), images: _normalImages());
+      testWidgets('${size.width}x${size.height} scrolls only the image list while settings remain fixed', (
+        tester,
+      ) async {
+        await _pumpHomeScreen(tester, size: size, locale: const Locale('ja'), images: _normalImages(count: 12));
 
         final footerTop = tester.getTopLeft(find.byType(CompressionFooter)).dy;
-        final lastRow = find.byType(QueuedImageRow).last;
-        await tester.ensureVisible(lastRow);
+        final settingsBounds = tester.getRect(find.byType(ConversionSettingsPanel));
+        final headerBounds = tester.getRect(find.byType(QueueHeader));
+        final queueList = find.byKey(const ValueKey('image-queue-list'));
+        final queueBounds = tester.getRect(queueList);
+        final scrollbarBounds = tester.getRect(find.byKey(const ValueKey('image-queue-scrollbar')));
+        expect(scrollbarBounds, queueBounds);
+        expect(queueBounds.top, headerBounds.bottom);
+        final lastRow = find.byKey(const ValueKey('/missing/landscape-11.jpg'));
+        await tester.scrollUntilVisible(
+          lastRow,
+          150,
+          scrollable: find.descendant(of: queueList, matching: find.byType(Scrollable)),
+        );
         await tester.pump();
+        expect(tester.getRect(find.byType(ConversionSettingsPanel)), settingsBounds);
+        expect(tester.getRect(find.byType(QueueHeader)), headerBounds);
         expect(tester.getBottomRight(lastRow).dy, lessThanOrEqualTo(footerTop));
         expect(
           tester.getTopLeft(lastRow).dy,
@@ -455,18 +471,18 @@ void main() {
     final suffixBounds = tester.getRect(suffixField);
     final overwriteRow = find.ancestor(of: find.text('Overwrite original files'), matching: find.byType(InkWell)).first;
     final overwriteBounds = tester.getRect(overwriteRow);
-    expect(suffixBounds.top - overwriteBounds.bottom, closeTo(8, 0.01));
-    expect(overwriteBounds.height, 32);
+    expect(suffixBounds.top - overwriteBounds.bottom, closeTo(6, 0.01));
+    expect(overwriteBounds.height, 26);
     final upscalingBounds = tester.getRect(
       find.ancestor(of: find.text('Allow upscaling'), matching: find.byType(InkWell)).first,
     );
     final exifBounds = tester.getRect(
       find.ancestor(of: find.text('Remove camera and location data (EXIF)'), matching: find.byType(InkWell)).first,
     );
-    expect(upscalingBounds.height, 32);
-    expect(exifBounds.height, 32);
-    expect(exifBounds.top - upscalingBounds.bottom, 4);
-    expect(overwriteBounds.top - exifBounds.bottom, 4);
+    expect(upscalingBounds.height, 26);
+    expect(exifBounds.height, 26);
+    expect(exifBounds.top - upscalingBounds.bottom, 0);
+    expect(overwriteBounds.top - exifBounds.bottom, 0);
 
     // 出力名の切り替え後も入力欄を同じ位置に保ち、元のサフィックスへ戻せる状態を確認する
     await tester.tap(overwriteRow);
@@ -801,7 +817,7 @@ void main() {
   });
 
   testWidgets(
-    'scrolling ratio options leaves the HomeScreen scroll position unchanged',
+    'scrolling ratio options leaves the image list scroll position unchanged',
     (tester) async {
       await _pumpHomeScreen(
         tester,
@@ -810,7 +826,7 @@ void main() {
         images: _normalImages(),
       );
       final screenScroll = tester.state<ScrollableState>(
-        find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+        find.descendant(of: find.byKey(const ValueKey('image-queue-list')), matching: find.byType(Scrollable)),
       );
       final initialOffset = screenScroll.position.pixels;
       await tester.tap(find.byKey(const ValueKey('aspect-ratio-select')));
