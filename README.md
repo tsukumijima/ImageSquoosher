@@ -39,12 +39,14 @@ Animated PNG and WebP files are rejected. ImageSquoosher does not silently switc
 1. Drop images into the window or choose **Add images**.
 2. Review the output size and filename shown for each image.
 3. Adjust the crop ratio, resize axis and pixels, JPEG quality, metadata option, and filename suffix.
-4. Choose **Start compression**.
+4. Choose **Convert**.
 5. Open the completed output from the image row or reveal its folder.
 
 The crop is always centered. You can keep the source aspect ratio, choose a preset ratio, or enter a custom horizontal-to-vertical ratio. Resizing uses the selected width or height while preserving the cropped aspect ratio.
 
-In a small window, scroll through the settings and conversion preview. The image-add and compression buttons stay visible while scrolling.
+In a small window, scroll through the settings and image list. **Add images** sits beside **Clear selection** above the list; **Convert** and **Stop** stay at the bottom.
+
+Each fixed-height row shows input and output filenames and sizes on the first line, with dimensions and aspect ratios below. Completed rows retain their green progress bars and size reduction, so results remain easy to compare. Output folders can be opened before conversion.
 
 Click the ratio or resize-axis field to open its options. While the list is open, use the arrow keys and Enter to select an option, or Esc to close the list.
 
@@ -75,14 +77,14 @@ Creation and modification timestamps are copied from the source on both macOS an
 
 The macOS app includes a Finder Sync extension.
 
-1. Choose the Finder integration button beside **Add images** in the upper-right corner of ImageSquoosher.
+1. Choose the Finder integration button with the puzzle icon in the upper-right corner of ImageSquoosher.
 2. Enable the **ImageSquoosher Finder Sync** extension in macOS System Settings.
 3. Select one or more JPEG, PNG, or WebP files in Finder.
 4. Control-click the selection and choose **ImageSquoosher で圧縮・リサイズ**.
 
 ImageSquoosher opens with the supported selected files in its conversion queue. The extension adds an item only to the contextual menu for supported image selections.
 
-If a conversion is running, a new Finder selection replaces the queue after the current batch finishes or stops. If several selections arrive during the batch, the latest selection is used. Choose **Start compression** to convert the new queue.
+If a conversion is running, a new Finder selection replaces the queue after the current batch finishes or stops. If several selections arrive during the batch, the latest selection is used. Choose **Convert** to convert the new queue.
 
 ## Privacy and processing
 
