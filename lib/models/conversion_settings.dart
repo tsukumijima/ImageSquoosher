@@ -39,6 +39,7 @@ class ConversionSettings {
             crop.dimensions,
             targetWidth: resizeAxis == ResizeAxis.width ? resizeValue : null,
             targetHeight: resizeAxis == ResizeAxis.height ? resizeValue : null,
+            targetAspectRatio: aspectRatio.preset == AspectRatioPreset.original ? null : requestedRatio,
             preventUpscale: preventUpscale,
           )
         : crop.dimensions;
@@ -88,10 +89,12 @@ CropRect calculateCenterCrop(ImageDimensions source, double targetAspectRatio) {
 }
 
 /// 幅または高さを基準に比率を保った出力寸法を計算する。
+/// [targetAspectRatio] を指定すると、クロップの整数丸め前の比率を出力へ適用する。
 ImageDimensions calculateOutputDimensions(
   ImageDimensions source, {
   int? targetWidth,
   int? targetHeight,
+  double? targetAspectRatio,
   bool preventUpscale = true,
 }) {
   if (targetWidth == null && targetHeight == null) {
@@ -110,11 +113,21 @@ ImageDimensions calculateOutputDimensions(
     outputWidth = targetWidth;
     outputHeight = targetHeight;
   } else {
-    // 片方だけを指定した場合は同じ拡大縮小率を両辺へ適用し、縦横比を保つ
+    // 指定した辺の倍率を求め、拡大禁止の上限を判定する
     final requestedScale = targetWidth == null ? targetHeight! / source.height : targetWidth / source.width;
-    final scale = preventUpscale && requestedScale > 1 ? 1.0 : requestedScale;
-    outputWidth = (source.width * scale).round();
-    outputHeight = (source.height * scale).round();
+    // 拡大禁止の上限では、画素単位に切り抜いた元の寸法を維持する
+    if (preventUpscale && requestedScale >= 1) {
+      return source;
+    }
+    // 元画像比率では倍率を先に求める計算順序を維持し、半画素の丸めも同じ結果にする
+    if (targetAspectRatio == null) {
+      outputWidth = (source.width * requestedScale).round();
+      outputHeight = (source.height * requestedScale).round();
+    } else {
+      // クロップの整数丸めによる誤差を出力へ持ち越さず、指定比率から反対側の辺を求める
+      outputWidth = targetWidth ?? (targetHeight! * targetAspectRatio).round();
+      outputHeight = targetHeight ?? (targetWidth! / targetAspectRatio).round();
+    }
   }
 
   if (preventUpscale) {

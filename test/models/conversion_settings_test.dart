@@ -4,6 +4,38 @@ import 'package:image_squoosher/models/conversion_settings.dart';
 import 'package:image_squoosher/models/image_dimensions.dart';
 
 void main() {
+  test('preserves original-ratio rounding at a half pixel', () {
+    const settings = ConversionSettings(
+      resizeEnabled: true,
+      resizeAxis: ResizeAxis.height,
+      resizeValue: 360,
+    );
+    expect(settings.plan(const ImageDimensions(7, 80)).output, const ImageDimensions(32, 360));
+  });
+
+  for (final height in [360, 720]) {
+    test('keeps the selected ratio after an integer crop at height $height', () {
+      final settings = ConversionSettings(
+        aspectRatio: const AspectRatio.preset(AspectRatioPreset.ratio16x9),
+        resizeEnabled: true,
+        resizeAxis: ResizeAxis.height,
+        resizeValue: height,
+      );
+      expect(settings.plan(const ImageDimensions(1000, 1000)).output, ImageDimensions(height * 16 ~/ 9, height));
+    });
+  }
+
+  test('keeps the cropped pixels when the requested size would enlarge them', () {
+    const settings = ConversionSettings(
+      aspectRatio: AspectRatio.preset(AspectRatioPreset.ratio16x9),
+      resizeEnabled: true,
+      resizeAxis: ResizeAxis.height,
+      resizeValue: 720,
+      allowUpscale: false,
+    );
+    expect(settings.plan(const ImageDimensions(1000, 1000)).output, const ImageDimensions(1000, 562));
+  });
+
   test('provides the supported aspect ratio presets', () {
     expect(AspectRatioPreset.ratio3x2.value, closeTo(3 / 2, 0.0001));
     expect(AspectRatioPreset.ratio2x3.value, closeTo(2 / 3, 0.0001));

@@ -68,6 +68,35 @@ void main() {
     });
 
     test(
+      '整数クロップの端数があっても指定比率と高さで JPEG を出力する',
+      () async {
+        final inputFile = File('${temporaryDirectory.path}/rounded-crop.png');
+        final outputFile = File('${temporaryDirectory.path}/rounded-crop.jpg');
+        await inputFile.writeAsBytes(image.encodePng(image.Image(width: 1000, height: 1000)));
+        final result = await ImageConversionPipeline().convert(
+          ImageConversionRequest(
+            inputFile: inputFile,
+            outputFile: outputFile,
+            cjpegExecutable: cjpeg,
+            settings: const ConversionSettings(
+              aspectRatio: AspectRatio.preset(AspectRatioPreset.ratio16x9),
+              resizeEnabled: true,
+              resizeAxis: ResizeAxis.height,
+              resizeValue: 720,
+            ),
+          ),
+        );
+        final output = image.decodeJpg(await outputFile.readAsBytes())!;
+        expect(result.outputWidth, 1280);
+        expect(result.outputHeight, 720);
+        expect(output.width, 1280);
+        expect(output.height, 720);
+        expect(await inputFile.exists(), isTrue);
+      },
+      skip: canRunCjpeg == false ? 'cjpeg is unavailable on this host.' : false,
+    );
+
+    test(
       'JPEG、PNG、WebP の静止画を中央クロップして JPEG へ変換する',
       () async {
         final source = image.Image(width: 12, height: 8, numChannels: 4);
