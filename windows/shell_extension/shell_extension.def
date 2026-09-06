@@ -1,0 +1,5 @@
+LIBRARY "ImageSquoosherShell"
+
+EXPORTS
+  DllCanUnloadNow PRIVATE
+  DllGetClassObject PRIVATE

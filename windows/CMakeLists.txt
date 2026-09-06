@@ -52,6 +52,12 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
+# Windows 11 の最初の右クリックメニューで読み込む COM 拡張を同梱する
+add_subdirectory("shell_extension")
+add_dependencies(${BINARY_NAME} ImageSquoosherShell)
+add_subdirectory("shell_registration")
+add_dependencies(${BINARY_NAME} ImageSquoosherShellRegistration)
+
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
@@ -73,6 +79,16 @@ set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
+
+install(TARGETS ImageSquoosherShell RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
+install(TARGETS ImageSquoosherShellRegistration RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/shell_registration/AppxManifest.xml"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../assets/images/app_icon_1024.png"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
