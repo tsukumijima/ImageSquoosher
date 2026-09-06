@@ -37,18 +37,18 @@ std::wstring QuoteArgument(const std::wstring& argument) {
 
 /// DACL が許可する最小権限と、各ミューテックス API の要求権限を子プロセスで比較する
 /// @param mutex_name 親プロセスが作ったミューテックス名
-/// @returns 権限境界が想定どおりの場合は0、それ以外は1
+/// @returns 権限境界が想定どおりの場合は0、それ以外は非0
 int RunChild(const wchar_t* mutex_name) {
   // CreateMutexW() は既存オブジェクトへ MUTEX_ALL_ACCESS を要求するため、この DACL では拒否される
   HANDLE broad_access_mutex = CreateMutexW(nullptr, FALSE, mutex_name);
   if (broad_access_mutex != nullptr) {
     CloseHandle(broad_access_mutex);
     std::cerr << "CreateMutexW unexpectedly opened the restricted mutex.\n";
-    return 1;
+    return 2;
   }
   if (GetLastError() != ERROR_ACCESS_DENIED) {
     std::cerr << "CreateMutexW failed with an unexpected error.\n";
-    return 1;
+    return 3;
   }
 
   // CreateMutexExW() は待機と解放に必要な権限だけを要求でき、同じ DACL の既存オブジェクトを開ける
@@ -56,17 +56,17 @@ int RunChild(const wchar_t* mutex_name) {
       CreateMutexExW(nullptr, mutex_name, 0, kMutexAccess);
   if (precise_access_mutex == nullptr) {
     std::cerr << "CreateMutexExW could not open the restricted mutex.\n";
-    return 1;
+    return 4;
   }
   CloseHandle(precise_access_mutex);
   return 0;
 }
 }  // namespace
 
-/// 通常権限の親子2プロセスで、制限付きミューテックスを開く API の差を検証する
+/// 同じ権限の親子2プロセスで、制限付きミューテックスを開く API の差を検証する
 /// @param argument_count コマンドライン引数の個数
 /// @param arguments コマンドライン引数
-/// @returns 全検証に成功した場合は0、それ以外は1
+/// @returns 全検証に成功した場合は0、それ以外は非0
 int wmain(int argument_count, wchar_t** arguments) {
   if (argument_count == 3 && wcscmp(arguments[1], L"--child") == 0) {
     return RunChild(arguments[2]);
@@ -81,8 +81,9 @@ int wmain(int argument_count, wchar_t** arguments) {
       std::to_wstring(GetCurrentProcessId()) + L"." +
       std::to_wstring(GetTickCount64());
   PSECURITY_DESCRIPTOR security_descriptor = nullptr;
+  // 管理者や所有者にも最小権限だけを許可し、実行時の昇格状態に左右されず API の要求権限差を検証する
   constexpr const wchar_t* kMutexSecurity =
-      L"D:(A;;GA;;;SY)(A;;GA;;;BA)(A;;0x00100001;;;WD)";
+      L"D:(D;;0x000F0000;;;WD)(A;;0x00100001;;;WD)";
   if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(
           kMutexSecurity, SDDL_REVISION_1, &security_descriptor, nullptr)) {
     std::cerr << "The mutex security descriptor could not be created.\n";
@@ -130,7 +131,9 @@ int wmain(int argument_count, wchar_t** arguments) {
   CloseHandle(process_info.hProcess);
   CloseHandle(mutex);
   if (wait_result != WAIT_OBJECT_0 || !has_exit_code || child_exit_code != 0) {
-    std::cerr << "The child process did not verify the mutex access boundary.\n";
+    std::cerr << "The child process did not verify the mutex access boundary. "
+              << "wait: " << wait_result << ", exit: " << child_exit_code
+              << ".\n";
     return 1;
   }
   return 0;
