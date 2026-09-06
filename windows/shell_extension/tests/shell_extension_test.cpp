@@ -21,6 +21,25 @@ using DllCanUnloadNowFunction = HRESULT(__stdcall*)();
 using DllGetClassObjectFunction =
     HRESULT(__stdcall*)(REFCLSID, REFIID, void**);
 
+/// 8.3 短縮名を Shell API が返す通常の長いパス表記へ揃える
+/// @param path 実在するファイルパス
+/// @returns 長いパス表記 (取得失敗時は入力値)
+std::wstring NormalizePath(const std::wstring& path) {
+  const DWORD required_length = GetLongPathNameW(path.c_str(), nullptr, 0);
+  if (required_length == 0) {
+    return path;
+  }
+  std::wstring normalized_path(required_length, L'\0');
+  const DWORD written_length = GetLongPathNameW(
+      path.c_str(), normalized_path.data(),
+      static_cast<DWORD>(normalized_path.size()));
+  if (written_length == 0 || written_length >= normalized_path.size()) {
+    return path;
+  }
+  normalized_path.resize(written_length);
+  return normalized_path;
+}
+
 /// 実在するパスから Explorer と同じ IShellItemArray を構築する
 /// @param paths 選択項目として渡すパス
 /// @returns 構築した IShellItemArray (失敗時は空)
@@ -96,7 +115,9 @@ std::set<std::wstring> ReadInvokedPaths(
     if (is_complete) {
       ++*process_count;
       *path_count += process_paths.size();
-      paths.insert(process_paths.begin(), process_paths.end());
+      for (const auto& path : process_paths) {
+        paths.insert(NormalizePath(path));
+      }
     }
   }
   return paths;
@@ -283,8 +304,11 @@ int wmain(int argument_count, wchar_t** arguments) {
         "The command-line limit did not produce multiple launch batches.");
   check(invoked_path_count == expected_paths.size(),
         "Unsupported or duplicate items reached the application.");
-  check(invoked_paths ==
-            std::set<std::wstring>(expected_paths.begin(), expected_paths.end()),
+  std::set<std::wstring> normalized_expected_paths;
+  for (const auto& path : expected_paths) {
+    normalized_expected_paths.insert(NormalizePath(path));
+  }
+  check(invoked_paths == normalized_expected_paths,
         "The batched launch did not preserve every selected image.");
   check(std::all_of(expected_paths.begin(), expected_paths.end(),
                     [](const auto& path) {
