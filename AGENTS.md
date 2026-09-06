@@ -35,13 +35,15 @@ macos/
 ├── Runner/                           # Flutter 本体と日時複製チャネル
 └── FinderSync/                       # Finder の右クリック連携
 windows/runner/                        # Win32 ウィンドウと日時複製チャネル
+windows/shell_extension/               # Windows 11 の IExplorerCommand DLL
+windows/shell_registration/            # Explorer 連携の登録と一時昇格
 native/mozjpeg/                       # cjpeg の配置先とライセンス
 tools/                                # MozJPEG、署名、公証、配布用スクリプト
 test/                                 # モデル、命名、変換コアのテスト
 ```
 
 依存方向は `ui → services → models / utils` とします。  
-OS 固有 API は `macos/` と `windows/runner/` に閉じ込め、Dart 側は `MethodChannel` を通じて呼び出します。
+OS 固有 API は `macos/` と `windows/` に閉じ込め、Dart 側は `MethodChannel` を通じて呼び出します。
 
 ## 変更方針
 
@@ -89,6 +91,19 @@ OS 固有 API は `macos/` と `windows/runner/` に閉じ込め、Dart 側は `
 変換後の作成日時と更新日時は元画像から引き継ぎます。  
 macOS は `URLResourceValues`、Windows は `MethodChannel` 経由の `GetFileTime` / `SetFileTime` を使います。  
 ネイティブ処理が失敗した場合は変換処理へエラーを返します。
+
+## Windows の Explorer 連携
+
+Windows 11 では、対応画像の最初の右クリックメニューへ直接項目を表示します。  
+［その他のオプションを確認］を開いた後の表示だけでは完成条件を満たしません。  
+Windows 10 は現在のユーザーの従来型メニューを使います。
+
+配布は Portable ZIP とし、`IExplorerCommand` の DLL と `AppxManifest.xml` を同梱します。  
+Windows 11 の登録は展開済みフォルダを Package Manager へ登録する方式を使い、登録中に必要な開発者モードの変更だけを UAC 付きヘルパーへ任せます。  
+登録処理自体は通常権限の現在のユーザーとして実行し、開発者モードは成功・失敗のどちらでも変更前の状態へ戻します。
+
+右上の操作は実際の登録状態に応じて追加・削除・配置移動後の修復へ切り替えます。  
+実機検証では、開発者モードを戻した後の最初のメニュー、複数画像の受け渡し、登録解除、UAC キャンセルを確認します。
 
 ## Finder Sync
 

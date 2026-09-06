@@ -80,11 +80,15 @@ Creation and modification timestamps are copied from the source on both macOS an
 
 ## Explorer integration on Windows
 
-Open **Manage Explorer integration** using the puzzle button in the upper-right corner and enable **Add to the context menu**. Select JPEG, PNG, or WebP images in Explorer, then right-click and choose **Compress and resize with ImageSquoosher** to add those images to the queue. On Windows 11, open **Show more options** first.
+Use the puzzle button labeled **Add to the Explorer context menu** in the upper-right corner and approve the Windows prompt. Select JPEG, PNG, or WebP images in Explorer, then right-click and choose **ImageSquoosher** to add those images to the queue. The entry appears directly in the first Windows 11 context menu. On Windows 10, the entry is named **Compress and resize with ImageSquoosher**.
 
 Images received during conversion are collected and added when the batch finishes or stops. Choose **Convert** to process the added images.
 
-Registration applies to the current user and requires no administrator rights. If you move the app folder, enable integration again from its new location. Turn this setting off before deleting the app to remove the context menu entry.
+Windows 11 registration applies to the current user and requests administrator approval only when needed. Developer Mode is enabled temporarily during registration, then restored to its previous setting. Normal conversion and launching from Explorer run without administrator rights. Windows 10 uses the current user's classic context menu.
+
+Once registered, the button changes to **Remove from the Explorer context menu**. If you move the app folder, choose **Repair Explorer integration** from the new location. Use this button to remove integration before deleting the app.
+
+The app remains a portable ZIP distribution: Windows registers the `AppxManifest.xml` in the extracted folder. This uses a Windows development feature, so registration can fail on devices whose organizational policies prohibit Developer Mode.
 
 ## Finder integration on macOS
 
