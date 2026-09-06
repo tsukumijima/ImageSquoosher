@@ -130,6 +130,19 @@ jobs:
           ctest --test-dir $nativeTestDirectory -C Debug --output-on-failure
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Test Windows 11 shell extension and registration
+        shell: pwsh
+        run: |
+          foreach ($component in @('shell_extension', 'shell_registration')) {
+            $componentTestDirectory = Join-Path $env:RUNNER_TEMP "image-squoosher-$component-tests"
+            cmake -S "windows/$component" -B $componentTestDirectory -A x64
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            cmake --build $componentTestDirectory --config Release
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            ctest --test-dir $componentTestDirectory -C Release --output-on-failure
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
       - name: Run Windows desktop integration test
         shell: pwsh
         run: |
@@ -160,6 +173,10 @@ jobs:
         run: |
           $requiredPaths = @(
             '${{ env.WINDOWS_RELEASE_PATH }}/ImageSquoosher.exe',
+            '${{ env.WINDOWS_RELEASE_PATH }}/ImageSquoosherShell.dll',
+            '${{ env.WINDOWS_RELEASE_PATH }}/ImageSquoosherShellRegistration.exe',
+            '${{ env.WINDOWS_RELEASE_PATH }}/AppxManifest.xml',
+            '${{ env.WINDOWS_RELEASE_PATH }}/app_icon_1024.png',
             '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/cjpeg.exe',
             '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/LICENSE.md',
             '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/README.ijg',
@@ -173,9 +190,11 @@ jobs:
               throw "Windows bundle file is missing: $requiredPath."
             }
           }
-          # PE ヘッダーの機械種別を読み取り、本体と同梱エンコーダーがともに x64 であることを確認する
+          # PE ヘッダーの機械種別を読み取り、本体と同梱するネイティブバイナリが x64 であることを確認する
           foreach ($executablePath in @(
             '${{ env.WINDOWS_RELEASE_PATH }}/ImageSquoosher.exe',
+            '${{ env.WINDOWS_RELEASE_PATH }}/ImageSquoosherShell.dll',
+            '${{ env.WINDOWS_RELEASE_PATH }}/ImageSquoosherShellRegistration.exe',
             '${{ env.WINDOWS_RELEASE_PATH }}/mozjpeg/cjpeg.exe'
           )) {
             $executableBytes = [System.IO.File]::ReadAllBytes($executablePath)
@@ -199,6 +218,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw 'Bundled cjpeg could not be executed.'
           }
+
+      - name: Validate Windows shell package manifest
+        shell: pwsh
+        run: |
+          $manifestTestDirectory = Join-Path $env:RUNNER_TEMP 'image-squoosher-manifest-test'
+          New-Item -ItemType Directory -Path $manifestTestDirectory | Out-Null
+          foreach ($fileName in @('AppxManifest.xml', 'ImageSquoosher.exe', 'ImageSquoosherShell.dll', 'app_icon_1024.png')) {
+            Copy-Item -LiteralPath (Join-Path '${{ env.WINDOWS_RELEASE_PATH }}' $fileName) -Destination $manifestTestDirectory
+          }
+          $makeAppx = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/makeappx.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if ($null -eq $makeAppx) { throw 'Windows SDK MakeAppx is missing.' }
+          # 配布するマニフェストを SDK のスキーマで検証し、検証用パッケージは一時フォルダへ留める
+          & $makeAppx.FullName pack /d $manifestTestDirectory /p (Join-Path $env:RUNNER_TEMP 'image-squoosher-manifest-test.appx') /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Archive Windows application
         shell: pwsh
