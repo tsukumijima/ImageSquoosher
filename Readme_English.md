@@ -11,7 +11,7 @@ ImageSquoosher supports the following systems:
 
 | OS | Architecture |
 | --- | --- |
-| Windows 10 / 11 | x64 |
+| Windows 11 | x64 |
 | macOS 12 or later | Apple Silicon (arm64) |
 
 1. Open the [Releases page](https://github.com/tsukumijima/ImageSquoosher/releases).
@@ -80,11 +80,11 @@ Creation and modification timestamps are copied from the source on both macOS an
 
 ## Explorer integration on Windows
 
-Use the puzzle button labeled **Add to the Explorer context menu** in the upper-right corner and approve the Windows prompt. Select JPEG, PNG, or WebP images in Explorer, then right-click and choose **ImageSquoosher** to add those images to the queue. The entry appears directly in the first Windows 11 context menu. On Windows 10, the entry is named **Compress and resize with ImageSquoosher**.
+Use the puzzle button labeled **Add to the Explorer context menu** in the upper-right corner and approve the Windows prompt. Select JPEG, PNG, or WebP images in Explorer, then right-click and choose **ImageSquoosher** to add those images to the queue. The entry appears directly in the first Windows 11 context menu.
 
 Images received during conversion are collected and added when the batch finishes or stops. Choose **Convert** to process the added images.
 
-Windows 11 registration applies to the current user and requests administrator approval only when needed. Developer Mode is enabled temporarily during registration, then restored to its previous setting. Normal conversion and launching from Explorer run without administrator rights. Windows 10 uses the current user's classic context menu.
+Windows 11 registration applies to the current user and requests administrator approval only when needed. Developer Mode is enabled temporarily during registration, then restored to its previous setting. Normal conversion and launching from Explorer run without administrator rights.
 
 Once registered, the button changes to **Remove from the Explorer context menu**. If you move the app folder, choose **Repair Explorer integration** from the new location. Use this button to remove integration before deleting the app.
 
