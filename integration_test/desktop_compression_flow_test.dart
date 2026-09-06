@@ -57,9 +57,16 @@ void main() {
           didLoadFinderSelection = true;
           return inputPaths;
         }
-        if (call.method == 'isFinderSyncExtensionEnabled' || call.method == 'isWindowsShellIntegrationEnabled') {
+        if (call.method == 'isFinderSyncExtensionEnabled') {
           didLoadFinderSyncStatus = true;
           return false;
+        }
+        if (call.method == 'getWindowsShellIntegrationStatus') {
+          didLoadFinderSyncStatus = true;
+          return 'disabled';
+        }
+        if (call.method == 'getWindowsUACShieldIcon') {
+          return Uint8List(0);
         }
         if (call.method == 'copySourceFileDatesToOutputFile') {
           final arguments = call.arguments! as Map<Object?, Object?>;

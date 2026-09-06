@@ -590,35 +590,59 @@ abstract class AppLocalizations {
   /// **'Finder 連携を有効化'**
   String get finderSyncEnable;
 
-  /// No description provided for @windowsShellIntegration.
-  ///
-  /// In ja, this message translates to:
-  /// **'Explorer 連携を管理'**
-  String get windowsShellIntegration;
-
   /// No description provided for @windowsShellMenuLabel.
   ///
   /// In ja, this message translates to:
   /// **'ImageSquoosher で圧縮・リサイズ'**
   String get windowsShellMenuLabel;
 
-  /// No description provided for @windowsShellEnabled.
+  /// No description provided for @windowsShellEnableTooltip.
   ///
   /// In ja, this message translates to:
-  /// **'右クリックメニューに追加する'**
-  String get windowsShellEnabled;
+  /// **'Explorer の右クリックメニューに追加'**
+  String get windowsShellEnableTooltip;
 
-  /// No description provided for @windowsShellDescription.
+  /// No description provided for @windowsShellDisableTooltip.
   ///
   /// In ja, this message translates to:
-  /// **'Explorer で画像を右クリックし、［ImageSquoosher で圧縮・リサイズ］から画像を開けます。\nWindows 11 では［その他のオプションを確認］に表示されます。\n\n現在のユーザーだけに登録するため、管理者権限は不要です。アプリの保存場所を移動した場合は、移動先で連携を有効にしてください。'**
-  String get windowsShellDescription;
+  /// **'Explorer の右クリックメニューから削除'**
+  String get windowsShellDisableTooltip;
 
-  /// No description provided for @windowsShellFailed.
+  /// No description provided for @windowsShellRepairTooltip.
   ///
   /// In ja, this message translates to:
-  /// **'右クリック連携を変更できませんでした。もう一度お試しください。'**
-  String get windowsShellFailed;
+  /// **'Explorer の右クリック連携を修復'**
+  String get windowsShellRepairTooltip;
+
+  /// No description provided for @windowsShellEnabledNotice.
+  ///
+  /// In ja, this message translates to:
+  /// **'Explorer の右クリックメニューに追加しました。'**
+  String get windowsShellEnabledNotice;
+
+  /// No description provided for @windowsShellDisabledNotice.
+  ///
+  /// In ja, this message translates to:
+  /// **'Explorer の右クリックメニューから削除しました。'**
+  String get windowsShellDisabledNotice;
+
+  /// No description provided for @windowsShellRepairedNotice.
+  ///
+  /// In ja, this message translates to:
+  /// **'Explorer の右クリック連携を修復しました。'**
+  String get windowsShellRepairedNotice;
+
+  /// No description provided for @windowsShellCancelledNotice.
+  ///
+  /// In ja, this message translates to:
+  /// **'Explorer 連携の変更をキャンセルしました。'**
+  String get windowsShellCancelledNotice;
+
+  /// No description provided for @windowsShellOperationFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'Explorer 連携を変更できませんでした。\nもう一度お試しください。'**
+  String get windowsShellOperationFailed;
 
   /// No description provided for @restoreDefaults.
   ///

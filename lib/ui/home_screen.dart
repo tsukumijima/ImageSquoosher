@@ -81,6 +81,9 @@ class HomeScreenState extends State<HomeScreen> {
   List<String>? _pendingFinderSelection;
   bool _isDropActive = false;
   bool _isFinderSyncEnabled = false;
+  WindowsShellIntegrationStatus _windowsShellIntegrationStatus = WindowsShellIntegrationStatus.disabled;
+  Uint8List? _windowsUACShieldIcon;
+  bool _isWindowsShellIntegrationBusy = false;
   String _applicationVersion = '';
   Timer? _saveTimer;
   Future<void> _saveTail = Future<void>.value();
@@ -186,17 +189,64 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// OS の右クリック連携の有効状態をヘッダーへ反映する。
-  Future<void> _loadFinderSyncStatus() async {
+  /// OS の右クリック連携の実状態をヘッダーへ反映する。
+  Future<WindowsShellIntegrationStatus?> _loadFinderSyncStatus() async {
+    if (Platform.isWindows) {
+      WindowsShellIntegrationStatus? status;
+      try {
+        final statusName = await _finderMethodChannel.invokeMethod<String>('getWindowsShellIntegrationStatus');
+        status = switch (statusName) {
+          'enabled' => WindowsShellIntegrationStatus.enabled,
+          'repair' => WindowsShellIntegrationStatus.repair,
+          'disabled' => WindowsShellIntegrationStatus.disabled,
+          _ => throw StateError('Unknown Windows shell integration status: $statusName'),
+        };
+        if (mounted) {
+          setState(() {
+            _windowsShellIntegrationStatus = status!;
+            _isFinderSyncEnabled = status == WindowsShellIntegrationStatus.enabled;
+          });
+        }
+      } on MissingPluginException {
+        // Explorer 連携を含まない開発環境でも通常の画像追加を利用する
+      } catch (error, stackTrace) {
+        LoggingService.instance.warning(
+          'Failed to read Windows shell integration status.',
+          tag: 'Shell',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+
+      try {
+        final shieldIcon = await _finderMethodChannel.invokeMethod<Uint8List>('getWindowsUACShieldIcon');
+        if (shieldIcon == null || shieldIcon.isEmpty) {
+          throw StateError('Windows UAC shield icon was empty.');
+        }
+        if (mounted) {
+          setState(() => _windowsUACShieldIcon = shieldIcon);
+        }
+      } on MissingPluginException {
+        // Explorer 連携を含まない開発環境でも通常の画像追加を利用する
+      } catch (error, stackTrace) {
+        LoggingService.instance.warning(
+          'Failed to read Windows UAC shield icon.',
+          tag: 'Shell',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+      return status;
+    }
+
     try {
-      final isEnabled = await _finderMethodChannel.invokeMethod<bool>(
-        Platform.isWindows ? 'isWindowsShellIntegrationEnabled' : 'isFinderSyncExtensionEnabled',
-      );
+      final isEnabled = await _finderMethodChannel.invokeMethod<bool>('isFinderSyncExtensionEnabled');
       if (mounted) {
         setState(() => _isFinderSyncEnabled = isEnabled ?? false);
       }
+      return isEnabled == true ? WindowsShellIntegrationStatus.enabled : WindowsShellIntegrationStatus.disabled;
     } on MissingPluginException {
-      // Finder Sync を含まないプラットフォームでは通常のファイル追加を利用する
+      // Finder Sync を含まないプラットフォームでは通常の画像追加を利用する
     } catch (error, stackTrace) {
       LoggingService.instance.warning(
         'Failed to read shell integration status.',
@@ -205,6 +255,7 @@ class HomeScreenState extends State<HomeScreen> {
         stackTrace: stackTrace,
       );
     }
+    return null;
   }
 
   /// パッケージ情報から配布物と同じバージョン表記を取得する。
@@ -429,11 +480,10 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// OS の右クリック連携の設定を開く。
+  /// OS の右クリック連携を変更する。
   Future<void> _openFinderSettings() async {
-    // Windows はアプリ内の設定で利用者ごとの登録を管理する
     if (Platform.isWindows) {
-      await _openWindowsShellSettings();
+      await _toggleWindowsShellIntegration();
       return;
     }
     try {
@@ -450,73 +500,70 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 現在の利用者に対する Explorer 連携を変更し、登録に成功した状態を表示する。
-  Future<void> _openWindowsShellSettings() async {
+  /// 現在の状態に応じて Explorer 連携を追加、解除、修復する。
+  Future<void> _toggleWindowsShellIntegration() async {
+    if (_isWindowsShellIntegrationBusy) {
+      return;
+    }
     final l10n = AppLocalizations.of(context);
-    var isSaving = false;
-    String? errorMessage;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          constraints: const BoxConstraints(maxWidth: 480),
-          title: Text(l10n.windowsShellIntegration),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.windowsShellDescription),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.windowsShellEnabled),
-                  value: _isFinderSyncEnabled,
-                  onChanged: isSaving
-                      ? null
-                      : (isEnabled) async {
-                          // 登録処理が終わるまで次の切り替えを待つ
-                          setDialogState(() {
-                            isSaving = true;
-                            errorMessage = null;
-                          });
-                          try {
-                            await _finderMethodChannel.invokeMethod<void>(
-                              'setWindowsShellIntegrationEnabled',
-                              {'enabled': isEnabled, 'label': l10n.windowsShellMenuLabel},
-                            );
-                            // ネイティブ処理の成功後にヘッダーとスイッチへ反映する
-                            if (mounted) {
-                              setState(() => _isFinderSyncEnabled = isEnabled);
-                            }
-                          } catch (error, stackTrace) {
-                            // 失敗理由はログへ残し、ダイアログから再試行できるようにする
-                            LoggingService.instance.warning(
-                              'Failed to change Windows shell integration.',
-                              tag: 'Shell',
-                              error: error,
-                              stackTrace: stackTrace,
-                            );
-                            errorMessage = l10n.windowsShellFailed;
-                          } finally {
-                            // Esc などで閉じた場合も、表示中のダイアログだけを更新対象にする
-                            if (dialogContext.mounted) {
-                              setDialogState(() => isSaving = false);
-                            }
-                          }
-                        },
-                ),
-                if (errorMessage != null)
-                  Text(errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: isSaving ? null : () => Navigator.of(context).pop(), child: Text(l10n.close)),
-          ],
-        ),
-      ),
-    );
+    final statusBeforeChange = _windowsShellIntegrationStatus;
+    final shouldEnable = statusBeforeChange != WindowsShellIntegrationStatus.enabled;
+    if (mounted) {
+      setState(() => _isWindowsShellIntegrationBusy = true);
+    }
+    try {
+      await _finderMethodChannel.invokeMethod<void>(
+        'setWindowsShellIntegrationEnabled',
+        {
+          'enabled': shouldEnable,
+          'label': shouldEnable ? l10n.windowsShellMenuLabel : '',
+        },
+      );
+      final statusAfterChange = await _loadFinderSyncStatus();
+      if (mounted == false) {
+        return;
+      }
+      final expectedStatus = shouldEnable
+          ? WindowsShellIntegrationStatus.enabled
+          : WindowsShellIntegrationStatus.disabled;
+      if (statusAfterChange != expectedStatus) {
+        _showMessage(l10n.windowsShellOperationFailed, kind: AppNoticeKind.error);
+        return;
+      }
+      final message = switch (statusBeforeChange) {
+        WindowsShellIntegrationStatus.enabled => l10n.windowsShellDisabledNotice,
+        WindowsShellIntegrationStatus.repair => l10n.windowsShellRepairedNotice,
+        WindowsShellIntegrationStatus.disabled => l10n.windowsShellEnabledNotice,
+      };
+      _showMessage(message, kind: AppNoticeKind.success);
+    } catch (error, stackTrace) {
+      final isCancelled = _isWindowsShellIntegrationCancelled(error);
+      await _loadFinderSyncStatus();
+      if (mounted) {
+        _showMessage(
+          isCancelled ? l10n.windowsShellCancelledNotice : l10n.windowsShellOperationFailed,
+          kind: isCancelled ? AppNoticeKind.info : AppNoticeKind.error,
+        );
+      }
+      if (isCancelled == false) {
+        LoggingService.instance.warning(
+          'Failed to change Windows shell integration.',
+          tag: 'Shell',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isWindowsShellIntegrationBusy = false);
+      }
+    }
+  }
+
+  /// UAC の確認画面で利用者が中止したエラーを判定する。
+  bool _isWindowsShellIntegrationCancelled(Object error) {
+    final details = error is PlatformException ? error.details : null;
+    return details is int && (details == 1223 || details == 0x800704C7);
   }
 
   /// システム設定から戻ったときに Finder Sync の有効状態を読み直す。
@@ -649,6 +696,9 @@ class HomeScreenState extends State<HomeScreen> {
               isFinderSyncEnabled: _isFinderSyncEnabled,
               isFinderIntegrationAvailable: Platform.isMacOS || Platform.isWindows,
               isWindowsShellIntegration: Platform.isWindows,
+              windowsShellIntegrationStatus: _windowsShellIntegrationStatus,
+              windowsUACShieldIcon: _windowsUACShieldIcon,
+              isWindowsShellIntegrationBusy: _isWindowsShellIntegrationBusy,
               onAddFiles: _addFiles,
               onFinderSettings: _openFinderSettings,
               onMenuAction: _handleMenuAction,

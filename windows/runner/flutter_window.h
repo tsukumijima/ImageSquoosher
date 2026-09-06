@@ -43,6 +43,11 @@ class FlutterWindow : public Win32Window {
   std::vector<std::wstring> pending_selection_;
   bool is_selection_listener_ready_ = false;
 
+  // 登録ヘルパーの終了をタイマーで待ち、UAC 表示中もウィンドウを描画する
+  HANDLE shell_registration_process_ = nullptr;
+  std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+      shell_registration_result_;
+
   // ウィンドウ内で実行するプロジェクト
   flutter::DartProject project_;
 

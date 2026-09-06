@@ -1,12 +1,17 @@
 /// アプリ名と補助操作をまとめる画面ヘッダー。
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 
 /// ヘッダーメニューから親画面へ伝える操作。
 enum HomeMenuAction { checkForUpdates, japanese, english, restoreDefaults, about }
+
+/// Windows の Explorer 連携に表示する状態。
+enum WindowsShellIntegrationStatus { enabled, disabled, repair }
 
 /// 画面上端へ主要操作を固定し、補助操作をメニューへまとめる。
 class HomeHeader extends StatelessWidget {
@@ -16,9 +21,12 @@ class HomeHeader extends StatelessWidget {
   /// @param isFinderSyncEnabled Finder Sync が有効か
   /// @param isFinderIntegrationAvailable Finder Sync 操作を表示できるか
   /// @param onAddFiles 画像追加時のコールバック
-  /// @param onFinderSettings Finder Sync 設定時のコールバック
+  /// @param onFinderSettings Finder Sync または Explorer 連携の操作時に呼び出すコールバック
   /// @param onMenuAction メニュー操作の通知先
-  /// @param isWindowsShellIntegration Explorer 連携の案内を表示するか
+  /// @param isWindowsShellIntegration Explorer 連携の操作を表示するか
+  /// @param windowsShellIntegrationStatus Explorer 連携の現在の状態
+  /// @param windowsUACShieldIcon Windows 標準の UAC 盾アイコン
+  /// @param isWindowsShellIntegrationBusy Explorer 連携の変更中か
   const HomeHeader({
     super.key,
     required this.isCompressing,
@@ -28,6 +36,9 @@ class HomeHeader extends StatelessWidget {
     required this.onFinderSettings,
     required this.onMenuAction,
     this.isWindowsShellIntegration = false,
+    this.windowsShellIntegrationStatus = WindowsShellIntegrationStatus.disabled,
+    this.windowsUACShieldIcon,
+    this.isWindowsShellIntegrationBusy = false,
   });
 
   final bool isCompressing;
@@ -37,6 +48,9 @@ class HomeHeader extends StatelessWidget {
   final VoidCallback onFinderSettings;
   final ValueChanged<HomeMenuAction> onMenuAction;
   final bool isWindowsShellIntegration;
+  final WindowsShellIntegrationStatus windowsShellIntegrationStatus;
+  final Uint8List? windowsUACShieldIcon;
+  final bool isWindowsShellIntegrationBusy;
 
   static const _menuItemStyle = ButtonStyle(
     minimumSize: WidgetStatePropertyAll(Size(0, 32)),
@@ -54,6 +68,12 @@ class HomeHeader extends StatelessWidget {
     final menuItemStyle = _menuItemStyle.copyWith(
       textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.bodyMedium!.copyWith(fontSize: 13)),
     );
+    final windowsShellTooltip = switch (windowsShellIntegrationStatus) {
+      WindowsShellIntegrationStatus.enabled => l10n.windowsShellDisableTooltip,
+      WindowsShellIntegrationStatus.repair => l10n.windowsShellRepairTooltip,
+      WindowsShellIntegrationStatus.disabled => l10n.windowsShellEnableTooltip,
+    };
+    final isWindowsShellActionDisabled = isCompressing || isWindowsShellIntegrationBusy;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 12, 8),
       child: Row(
@@ -87,14 +107,41 @@ class HomeHeader extends StatelessWidget {
               height: 40,
               child: IconButton(
                 tooltip: isWindowsShellIntegration
-                    ? l10n.windowsShellIntegration
+                    ? windowsShellTooltip
                     : isFinderSyncEnabled
                     ? l10n.finderSyncManage
                     : l10n.finderSyncEnable,
-                onPressed: isCompressing ? null : onFinderSettings,
-                icon: Icon(
-                  isFinderSyncEnabled ? Icons.extension : Icons.extension_off_outlined,
-                  color: isFinderSyncEnabled ? Theme.of(context).colorScheme.primary : null,
+                onPressed: isWindowsShellActionDisabled ? null : onFinderSettings,
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    if (isWindowsShellIntegration && isWindowsShellIntegrationBusy)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      Icon(
+                        isFinderSyncEnabled ? Icons.extension : Icons.extension_off_outlined,
+                        color: isFinderSyncEnabled ? Theme.of(context).colorScheme.primary : null,
+                      ),
+                    if (isWindowsShellIntegration &&
+                        isWindowsShellIntegrationBusy == false &&
+                        windowsShellIntegrationStatus != WindowsShellIntegrationStatus.enabled &&
+                        windowsUACShieldIcon != null)
+                      Positioned(
+                        right: -3,
+                        bottom: -3,
+                        child: Image.memory(
+                          windowsUACShieldIcon!,
+                          width: 14,
+                          height: 14,
+                          gaplessPlayback: true,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

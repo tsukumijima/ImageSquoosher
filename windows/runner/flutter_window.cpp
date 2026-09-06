@@ -14,6 +14,7 @@
 namespace {
 constexpr UINT_PTR kSelectionTimer = 0x4953;
 constexpr UINT kSelectionDelayMs = 250;
+constexpr UINT_PTR kShellRegistrationTimer = 0x4954;
 
 constexpr char kFileOperationsChannelName[] =
     "net.tsukumijima.image-squoosher/finder_sync";
@@ -156,9 +157,19 @@ bool FlutterWindow::OnCreate() {
           result->Success(flutter::EncodableValue(flutter::EncodableList{}));
           return;
         }
-        if (call.method_name() == "isWindowsShellIntegrationEnabled") {
-          result->Success(
-              flutter::EncodableValue(shell_integration::IsEnabled()));
+        if (call.method_name() == "getWindowsShellIntegrationStatus") {
+          std::string state;
+          const DWORD status = shell_integration::GetStatus(state);
+          if (status != ERROR_SUCCESS) {
+            result->Error("SHELL_STATUS_FAILED", "Could not read Explorer integration.",
+                          flutter::EncodableValue(static_cast<int64_t>(status)));
+          } else {
+            result->Success(flutter::EncodableValue(state));
+          }
+          return;
+        }
+        if (call.method_name() == "getWindowsUACShieldIcon") {
+          result->Success(flutter::EncodableValue(shell_integration::GetUACShieldIcon()));
           return;
         }
         if (call.method_name() == "setWindowsShellIntegrationEnabled") {
@@ -190,15 +201,29 @@ bool FlutterWindow::OnCreate() {
             result->Error("INVALID_ARGS", "Missing menu label.");
             return;
           }
-          const LSTATUS status =
-              shell_integration::SetEnabled(*is_enabled, menu_label);
+          // 二重起動を抑え、1回の登録と1件の Dart 応答を対応させる
+          if (shell_registration_process_ != nullptr) {
+            result->Error("SHELL_INTEGRATION_BUSY", "Explorer integration is already changing.");
+            return;
+          }
+          // 結果を受け取るタイマーを先に確保してから登録を開始する
+          if (SetTimer(GetHandle(), kShellRegistrationTimer, 100, nullptr) == 0) {
+            result->Error("SHELL_INTEGRATION_FAILED", "Could not monitor Explorer integration.");
+            return;
+          }
+          const DWORD status = shell_integration::StartUpdate(
+              *is_enabled, menu_label, shell_registration_process_);
           if (status != ERROR_SUCCESS) {
+            KillTimer(GetHandle(), kShellRegistrationTimer);
             result->Error(
                 "SHELL_INTEGRATION_FAILED",
                 "Could not update Explorer integration.",
                 flutter::EncodableValue(static_cast<int64_t>(status)));
-          } else {
+          } else if (shell_registration_process_ == nullptr) {
+            KillTimer(GetHandle(), kShellRegistrationTimer);
             result->Success();
+          } else {
+            shell_registration_result_ = std::move(result);
           }
           return;
         }
@@ -293,9 +318,15 @@ bool FlutterWindow::OnCreate() {
 void FlutterWindow::OnDestroy() {
   if (GetHandle() != nullptr) {
     KillTimer(GetHandle(), kSelectionTimer);
+    KillTimer(GetHandle(), kShellRegistrationTimer);
     RemovePropW(GetHandle(), shell_integration::kWindowProperty);
   }
   // チャネルを先に閉じてからエンジンとビューを解放する
+  shell_registration_result_.reset();
+  if (shell_registration_process_ != nullptr) {
+    CloseHandle(shell_registration_process_);
+    shell_registration_process_ = nullptr;
+  }
   file_operations_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
@@ -308,6 +339,29 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // ヘルパーが開発者モードを復元し終えてから、画面へ登録結果を通知する
+  if (message == WM_TIMER && wparam == kShellRegistrationTimer) {
+    if (shell_registration_process_ != nullptr &&
+        WaitForSingleObject(shell_registration_process_, 0) == WAIT_OBJECT_0) {
+      DWORD status = ERROR_GEN_FAILURE;
+      GetExitCodeProcess(shell_registration_process_, &status);
+      CloseHandle(shell_registration_process_);
+      shell_registration_process_ = nullptr;
+      KillTimer(hwnd, kShellRegistrationTimer);
+      if (status == ERROR_SUCCESS) {
+        status = shell_integration::CompleteUpdate();
+      }
+      if (status == ERROR_SUCCESS) {
+        shell_registration_result_->Success();
+      } else {
+        shell_registration_result_->Error(
+            "SHELL_INTEGRATION_FAILED", "Could not update Explorer integration.",
+            flutter::EncodableValue(static_cast<int64_t>(status)));
+      }
+      shell_registration_result_.reset();
+    }
+    return 0;
+  }
   // Explorer がファイルごとに起動したプロセスからの選択を受け取る
   if (message == WM_COPYDATA && lparam != 0) {
     const auto& data = *reinterpret_cast<const COPYDATASTRUCT*>(lparam);

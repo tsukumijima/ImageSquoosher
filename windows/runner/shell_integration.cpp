@@ -2,9 +2,12 @@
 
 #include <shellapi.h>
 #include <shlobj.h>
+#include <wincodec.h>
+#include <wrl/client.h>
 
 #include <algorithm>
 #include <cwchar>
+#include <filesystem>
 
 namespace shell_integration {
 namespace {
@@ -210,5 +213,136 @@ LSTATUS SetEnabled(bool is_enabled, const std::wstring& label) {
   }
   SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
   return ERROR_SUCCESS;
+}
+
+bool UsesModernMenu() {
+  // アプリ互換モードのバージョン補正を受けず、実際の OS ビルドで経路を選ぶ
+  using GetVersion = LONG(WINAPI*)(OSVERSIONINFOW*);
+  const auto get_version = reinterpret_cast<GetVersion>(
+      GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion"));
+  OSVERSIONINFOW version{};
+  version.dwOSVersionInfoSize = sizeof(version);
+  return get_version != nullptr && get_version(&version) == 0 &&
+         version.dwBuildNumber >= 22000;
+}
+
+DWORD GetStatus(std::string& state) {
+  if (!UsesModernMenu()) {
+    state = IsEnabled() ? "enabled" : "disabled";
+    return ERROR_SUCCESS;
+  }
+  // Package Manager の照会を小さなヘルパーへ任せ、設定ファイルの記録と区別する
+  const auto helper = std::filesystem::path(ExecutablePath()).parent_path() /
+                      L"ImageSquoosherShellRegistration.exe";
+  auto command = L"\"" + helper.wstring() + L"\" --status";
+  STARTUPINFOW startup{};
+  startup.cb = sizeof(startup);
+  PROCESS_INFORMATION process{};
+  if (!CreateProcessW(helper.c_str(), command.data(), nullptr, nullptr, FALSE,
+                      CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process)) {
+    return GetLastError();
+  }
+  CloseHandle(process.hThread);
+  const DWORD wait_result = WaitForSingleObject(process.hProcess, 5000);
+  DWORD exit_code = ERROR_TIMEOUT;
+  if (wait_result == WAIT_OBJECT_0) {
+    if (!GetExitCodeProcess(process.hProcess, &exit_code)) {
+      exit_code = GetLastError();
+    }
+  }
+  CloseHandle(process.hProcess);
+  if (exit_code > 2) {
+    return exit_code;
+  }
+  state = exit_code == 0 ? "enabled" : exit_code == 2 ? "repair" : "disabled";
+  return ERROR_SUCCESS;
+}
+
+DWORD StartUpdate(bool is_enabled, const std::wstring& label, HANDLE& process) {
+  process = nullptr;
+  if (!UsesModernMenu()) {
+    return SetEnabled(is_enabled, label);
+  }
+  // UAC と登録の待機はヘルパーが引き受け、通常のアプリは描画と入力を続ける
+  const auto helper = std::filesystem::path(ExecutablePath()).parent_path() /
+                      L"ImageSquoosherShellRegistration.exe";
+  auto command = L"\"" + helper.wstring() +
+                 (is_enabled ? L"\" --register" : L"\" --unregister");
+  STARTUPINFOW startup{};
+  startup.cb = sizeof(startup);
+  PROCESS_INFORMATION information{};
+  if (!CreateProcessW(helper.c_str(), command.data(), nullptr, nullptr, FALSE,
+                      CREATE_NO_WINDOW, nullptr, nullptr, &startup,
+                      &information)) {
+    return GetLastError();
+  }
+  CloseHandle(information.hThread);
+  process = information.hProcess;
+  return ERROR_SUCCESS;
+}
+
+DWORD CompleteUpdate() {
+  // 新メニューの登録が確定した後で、同じアプリの旧メニュー項目を整理する
+  const auto legacy_status = SetEnabled(false, L"");
+  if (legacy_status != ERROR_SUCCESS) {
+    return legacy_status;
+  }
+  SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
+  return ERROR_SUCCESS;
+}
+
+std::vector<uint8_t> GetUACShieldIcon() {
+  using Microsoft::WRL::ComPtr;
+  SHSTOCKICONINFO icon{};
+  icon.cbSize = sizeof(icon);
+  if (FAILED(SHGetStockIconInfo(SIID_SHIELD, SHGSI_ICON | SHGSI_SMALLICON,
+                                &icon))) {
+    return {};
+  }
+  // OS のアイコンから透過 PNG を作り、Flutter 側でも同じ盾を表示する
+  ComPtr<IWICImagingFactory> factory;
+  ComPtr<IWICBitmap> bitmap;
+  HRESULT result = CoCreateInstance(CLSID_WICImagingFactory, nullptr,
+                                     CLSCTX_INPROC_SERVER,
+                                     IID_PPV_ARGS(&factory));
+  if (SUCCEEDED(result)) {
+    result = factory->CreateBitmapFromHICON(icon.hIcon, &bitmap);
+  }
+  DestroyIcon(icon.hIcon);
+  if (FAILED(result)) {
+    return {};
+  }
+  ComPtr<IStream> stream;
+  ComPtr<IWICBitmapEncoder> encoder;
+  ComPtr<IWICBitmapFrameEncode> frame;
+  UINT width = 0;
+  UINT height = 0;
+  WICPixelFormatGUID format = GUID_WICPixelFormat32bppBGRA;
+  if (FAILED(CreateStreamOnHGlobal(nullptr, TRUE, &stream)) ||
+      FAILED(factory->CreateEncoder(GUID_ContainerFormatPng, nullptr, &encoder)) ||
+      FAILED(encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache)) ||
+      FAILED(encoder->CreateNewFrame(&frame, nullptr)) ||
+      FAILED(frame->Initialize(nullptr)) ||
+      FAILED(bitmap->GetSize(&width, &height)) ||
+      FAILED(frame->SetSize(width, height)) ||
+      FAILED(frame->SetPixelFormat(&format)) ||
+      FAILED(frame->WriteSource(bitmap.Get(), nullptr)) ||
+      FAILED(frame->Commit()) || FAILED(encoder->Commit())) {
+    return {};
+  }
+  STATSTG statistics{};
+  if (FAILED(stream->Stat(&statistics, STATFLAG_NONAME)) ||
+      statistics.cbSize.QuadPart > 1024 * 1024) {
+    return {};
+  }
+  std::vector<uint8_t> bytes(static_cast<size_t>(statistics.cbSize.QuadPart));
+  LARGE_INTEGER offset{};
+  ULONG read = 0;
+  if (FAILED(stream->Seek(offset, STREAM_SEEK_SET, nullptr)) ||
+      FAILED(stream->Read(bytes.data(), static_cast<ULONG>(bytes.size()), &read)) ||
+      read != bytes.size()) {
+    return {};
+  }
+  return bytes;
 }
 }  // namespace shell_integration
