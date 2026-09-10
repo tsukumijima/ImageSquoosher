@@ -90,7 +90,7 @@ void main() {
     }
   });
 
-  testWidgets('カードのダブルクリックで元画像を開き、操作ボタンとは独立する', (tester) async {
+  testWidgets('カードのシングルクリックで元画像を開き、操作ボタンとは独立する', (tester) async {
     var sourceOpenCount = 0;
     var outputOpenCount = 0;
     var folderOpenCount = 0;
@@ -120,12 +120,12 @@ void main() {
       final previousSourceCount = sourceOpenCount;
       await tester.tapAt(point);
       await tester.pump(const Duration(milliseconds: 400));
-      expect(sourceOpenCount, previousSourceCount);
+      expect(sourceOpenCount, previousSourceCount + 1);
       await tester.tapAt(point);
       await tester.pump(const Duration(milliseconds: 80));
       await tester.tapAt(point);
       await tester.pump(const Duration(milliseconds: 400));
-      expect(sourceOpenCount, previousSourceCount + 1);
+      expect(sourceOpenCount, previousSourceCount + 3);
       final ink = tester.widget<InkWell>(find.descendant(of: card, matching: find.byType(InkWell)).first);
       expect(ink.splashFactory, InkRipple.splashFactory);
       expect(ink.hoverColor!.a, 0.06);
@@ -148,7 +148,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 80));
         await tester.tap(button);
         await tester.pump(const Duration(milliseconds: 400));
-        expect(sourceOpenCount, previousSourceCount + 1);
+        expect(sourceOpenCount, previousSourceCount + 3);
       }
       expect(tester.takeException(), isNull);
     }

@@ -268,9 +268,9 @@ class QueuedImageRow extends StatelessWidget {
       margin: EdgeInsets.zero,
       elevation: 0,
       clipBehavior: Clip.antiAlias,
-      // ファイル一覧と同じダブルクリック操作に、ホバーと波紋の反応を添える
+      // 元画像を開くクリック操作に、ホバーと波紋の反応を添える
       child: InkWell(
-        onDoubleTap: onOpenSourceFile,
+        onTap: onOpenSourceFile,
         splashFactory: InkRipple.splashFactory,
         hoverColor: colorScheme.onSurface.withValues(alpha: 0.06),
         child: SizedBox(
@@ -337,9 +337,10 @@ class QueuedImageRow extends StatelessWidget {
                                   ),
                                   _buildStatusBadge(context),
                                   const SizedBox(width: 6),
-                                  // 操作領域のダブルクリックはボタン内で受け、元画像を開く操作と分ける
+                                  // 無効なボタンのクリックも操作領域で受け、元画像を開く操作と分ける
                                   GestureDetector(
-                                    onDoubleTap: () {},
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () {},
                                     child: Row(
                                       children: [
                                         IconButton(

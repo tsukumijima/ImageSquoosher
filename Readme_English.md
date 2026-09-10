@@ -49,7 +49,7 @@ Only the image list scrolls; the settings and list heading stay in place. **Add 
 
 Each fixed-height row shows input and output filenames and sizes on the first line, with dimensions and aspect ratios below. Status badges include an icon and label. Completed rows retain their green progress bars and size reduction, using the same green as success notifications. Output folders can be opened before conversion.
 
-Image cards brighten on hover. Double-click a card to open the source file in your default viewer; use **Open file** at the lower right of the card to open the converted file. A notification appears if overwriting or another action has removed the source file.
+Image cards brighten on hover. Single-click anywhere except the action buttons at the lower right of a card to open the source file in your default viewer; use **Open file** at the lower right of the card to open the converted file. A notification appears if overwriting or another action has removed the source file.
 
 Notifications separate the result from additional guidance with a line break and use relaxed line spacing.
 
