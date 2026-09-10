@@ -1,5 +1,8 @@
 # ImageSquoosher
 
+<img width="49.5%" alt="Image" src="https://github.com/user-attachments/assets/b8e29d08-efd1-468f-a3f4-09690e138785" />
+<img width="49.5%" alt="Image" src="https://github.com/user-attachments/assets/8f830f64-1f3f-41cf-ba00-64e61b933d61" /><br />
+
 > [!TIP]  
 > **🇯🇵 日本語版 README はこちら: [Readme.md](Readme.md)**
 
@@ -22,7 +25,7 @@ ImageSquoosher supports the following systems:
 
 On Windows, keep all files in the extracted folder together and run `ImageSquoosher.exe`. The `mozjpeg` folder and VC++ runtime DLLs next to the app are required.
 
-On macOS, move `ImageSquoosher.app` to the Applications folder and open it. Release builds are signed with a Developer ID certificate and notarized by Apple.
+On macOS, move `ImageSquoosher.app` to the Applications folder and open it.
 
 ## Supported image formats
 
@@ -180,21 +183,8 @@ GitHub Actions runs format, analyze, and test first. It then builds macOS arm64 
 
 Tags must use `vX.Y.Z` and match the version in `pubspec.yaml`. A tag release publishes exactly:
 
-- `ImageSquoosher-vX.Y.Z-macos.zip`
 - `ImageSquoosher-vX.Y.Z-windows.zip`
-
-The macOS release job requires these GitHub Actions secrets:
-
-| Secret | Purpose |
-| --- | --- |
-| `MACOS_CODE_SIGNING_ENABLED` | Must be `true` for a tag release |
-| `MACOS_CERTIFICATE_P12_BASE64` | Base64-encoded Developer ID Application certificate and private key |
-| `MACOS_CERTIFICATE_PASSWORD` | Password used to export the `.p12` file |
-| `APPLE_API_KEY_ID` | App Store Connect API key ID |
-| `APPLE_API_ISSUER_ID` | App Store Connect issuer ID |
-| `APPLE_API_KEY_P8_BASE64` | Base64-encoded App Store Connect `.p8` private key |
-
-The workflow imports signing material into a temporary keychain, signs the nested frameworks, Finder Sync extension, bundled `cjpeg`, and app from the inside out, submits the app to Apple for notarization, staples the ticket, and verifies both the signature and Gatekeeper result.
+- `ImageSquoosher-vX.Y.Z-macos.zip`
 
 ## License
 

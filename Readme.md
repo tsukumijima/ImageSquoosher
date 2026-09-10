@@ -1,9 +1,12 @@
 # ImageSquoosher
 
+<img width="49.5%" alt="Image" src="https://github.com/user-attachments/assets/b8e29d08-efd1-468f-a3f4-09690e138785" />
+<img width="49.5%" alt="Image" src="https://github.com/user-attachments/assets/8f830f64-1f3f-41cf-ba00-64e61b933d61" /><br />
+
 > [!TIP]  
 > **🌐 English version is available: [Readme_English.md](Readme_English.md)**
 
-ImageSquoosher は、静止画を容量の小さい JPEG へ変換するデスクトップアプリです。  
+**ImageSquoosher は、エクスプローラーや Finder で選択して右クリックした写真・画像を、ファイルサイズの小さい JPEG へ一括変換できるデスクトップアプリです。**  
 複数の JPEG・PNG・WebP 画像に対して、中央クロップ、リサイズ、メタデータ削除、MozJPEG による圧縮をまとめて行えます。
 
 ## インストール
@@ -24,8 +27,7 @@ ImageSquoosher は、静止画を容量の小さい JPEG へ変換するデス�
 Windows では展開したフォルダの内容を一緒に置き、`ImageSquoosher.exe` を起動します。  
 アプリと同じ場所にある `mozjpeg` フォルダと VC++ ランタイム DLL も動作に必要です。
 
-macOS では `ImageSquoosher.app` をアプリケーションフォルダへ移して起動します。  
-配布版は Developer ID 証明書で署名し、Apple の公証を通しています。
+macOS では `ImageSquoosher.app` をアプリケーションフォルダへ移して起動します。
 
 ## 対応画像形式
 
@@ -225,22 +227,8 @@ Windows の成果物には VC++ ランタイム DLL も含め、両 OS の ZIP �
 タグは `vX.Y.Z` 形式とし、`pubspec.yaml` のバージョンと一致させます。  
 タグのリリースでは次の2ファイルだけを公開します。
 
-- `ImageSquoosher-vX.Y.Z-macos.zip`
 - `ImageSquoosher-vX.Y.Z-windows.zip`
-
-macOS のリリースには、次の GitHub Actions のシークレットが必要です。
-
-| Secret | 用途 |
-| --- | --- |
-| `MACOS_CODE_SIGNING_ENABLED` | タグリリースでは `true` が必須 |
-| `MACOS_CERTIFICATE_P12_BASE64` | Developer ID Application 証明書と秘密鍵を含む `.p12` の Base64 値 |
-| `MACOS_CERTIFICATE_PASSWORD` | `.p12` の書き出しに使ったパスワード |
-| `APPLE_API_KEY_ID` | App Store Connect API キー ID |
-| `APPLE_API_ISSUER_ID` | App Store Connect の発行者 ID |
-| `APPLE_API_KEY_P8_BASE64` | App Store Connect の `.p8` 秘密鍵を Base64 化した値 |
-
-ワークフローは署名材料を一時キーチェーンへ取り込み、ネストしたフレームワーク、Finder Sync Extension、同梱した `cjpeg`、本体アプリを内側から順に署名します。  
-続けて Apple の公証へ提出し、公証チケットの添付、コード署名、Gatekeeper の検証を行います。
+- `ImageSquoosher-vX.Y.Z-macos.zip`
 
 ## License
 
